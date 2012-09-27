@@ -1,0 +1,84 @@
+
+\documentclass{article}
+\title{Hardware Modeling with Functional Datastructures: Functions, Arrows, Tupels, Vectors, and Inspection} 
+
+\begin{document}
+
+\section{Introduction}
+
+Why try to model hardware in functional languages (data flow view is more natural to functional languages)
+
+\section{Hardware Modeling in Haskell: Recent Approaches}
+
+\section{Why Arrows?}
+
+... and not Monads or functions or simple datatypes ...
+
+\begin{itemize}
+\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
+\item Functional Functions are too powerfull; arrows allow to downgrade functions' features.
+\item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
+\item Arrows resemble premonoidal effect categories and ...   are a common way for category theorists to model the
+semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
+semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
+Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
+\end{itemize}
+
+\section{First Approach: Classical Arrows}
+
+\subsection{Implementation}
+
+Generating Netlists, ...
+
+\subsection{Simple Example}
+
+\subsection{CRC}
+
+\subsection{Problems with this approach}
+
+\begin{itemize}
+\item Problems with nested tupels. Re-Tupeling is not very handy.
+\item Tupels are not an appropriate model for hardware wires. (e.g. input for a 3-ary AND: is it (x,(y,z)) or ((x,y),z)) 
+\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (...)}) is not available for later calculations (to generate the netlists, usw.)
+\end{itemize}
+
+The tupel-problem could be avoided (at least superficially) with the use of Patterson's proc-Notation. The proc-Notation
+abstracts the tupels ...
+
+
+\section{Coping with the Tupel-Problem -- "`Vector-Arrows"'}
+
+\begin{haskell}
+class VArrow a where
+  arr    :: (Vec n b -> Vec m b) -> a (Vec n b) (Vec m b)
+  (>>V)  :: a (Vec n b) -> 
+  firsts :: 
+  (&&&)  :: 
+  (***)  :: 
+\end{haskell}
+
+\subsection{Horn-Clause-Solution}
+
+\subsection{Type-Family-Solutions}
+
+-  :+: and :-:
+- ....
+
+Conclusion: That is dependent typing and Haskell is not (yet) a dependently typed function programming laguage. And all
+in all it seems that the Vec-Type together with the Arrows-Instances is too much dependent typing for Haskell
+
+\subsection{Using a dependently types language}
+
+\section{Coping with \hs{arr}-Problem}
+
+\subsection{ForSyDe: Using the AST of the arr argument}
+
+In order to transform a usual Haskell function into an hardware block, ForSyDe stores the AST of that function which is
+used later to synthesis VHDL.
+
+\subsection{Show-Type-Class (or Typeable)}
+
+\subsection{Generalized Arrows -- avoiding arr}
+
+
+\end{document}
