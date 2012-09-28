@@ -26,7 +26,18 @@ Functional programming languages like \emph{Haskell} are declarative.
     natural to stream processing hardware specifications. 
 \end{itemize}
 
-Why try to model hardware in functional languages (data flow view is more natural to functional languages)
+This properties lead to some interesting development possibilities which are not new in the functional programming world, but are rather
+unusual if not impossible in languages like VHDL. With the use of higher order functions developers are able to transform circuits just to
+their needed behavior. The clean detachment of the languages semantics from the circuits specification is the key that leads to an extreme
+flexible design. Last but not least the clear expressiveness of functional languages makes it easy to \emph{1:} reason, \emph{2:} realize
+and \emph{3:} analyze functional programs. % TODO do i need to cite sheeran here?
+
+\par
+In fact, these are old news, functional programming pioneers pointed to the use of functional languages as perfect hardware design languages
+long before. \cite{Sheeran} %O'Donnell and all the others\ldots
+
+From the authors point of view it is not only natural to describe hardware with the help of functional programming languages, but also it is
+the logical step.
 
 \section{Hardware Modeling in Haskell: Recent Approaches}
 
