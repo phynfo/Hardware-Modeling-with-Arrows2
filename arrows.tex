@@ -5,6 +5,26 @@
 \begin{document}
 
 \section{Introduction}
+With the rise of rapid prototyping and development methodologies in the hardware community, hardware has started to get softer. FPGA's are a
+major contributor for this trend. It is only natural to take benefits out of the existing software engineering concepts. This can be seen in
+hardware description languages like VHDL or Verilog. Both have taken their syntax from common languages like C and ADA. Those two are
+typical imperative languages, but there are arguments that declarative languages fit more natural to the problem of hardware modeling.
+Functional programming languages like \emph{Haskell} are declarative.
+
+\begin{itemize}
+  \item \emph{Referential transference}: While imperative languages force the programmer to prescribe the control flow a declarative
+    language is stateless. Stateless means, that the programmer does not describe the control flow, but the compiler is able to decide the
+    order of execution. Therefore concurrency isn't something that needs to be simulated (like it's done in System-C) but fits natural in
+    the language and the developed code.
+  \item \emph{Composition}: Functional programs are build out of the composition of small pieces. Again this attributes to hardware design
+    where complex systems are also build out of the composition of smaller pieces.
+  \item \emph{Type systems}: Functional languages like Haskell come with an expressive type system which helps to detect errors early and
+    also helps the developer to a cleaner design.
+  \item \emph{Higher-order functions}: Typical functional design techniques like higher order functions can be used to abstract common
+    circuit structures, so that the developers task is to instantiate them in order to get circuits.
+  \item \emph{Lazy evaluation}: With the help of lazy evaluating languages it is easy to express infinite data structures, which also maps
+    natural to stream processing hardware specifications. 
+\end{itemize}
 
 Why try to model hardware in functional languages (data flow view is more natural to functional languages)
 
