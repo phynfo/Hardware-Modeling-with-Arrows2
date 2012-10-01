@@ -36,6 +36,7 @@ and \emph{3:} analyze functional programs. % TODO do i need to cite sheeran here
 In fact, these are old news, functional programming pioneers pointed to the use of functional languages as perfect hardware design languages
 long before. \cite{Sheeran} %O'Donnell and all the others\ldots
 
+\par
 From the authors point of view it is not only natural to describe hardware with the help of functional programming languages, but also it is
 the logical step.
 
@@ -45,30 +46,63 @@ beginning dates back into the early 80s where Mary Sheeran came up with a functi
 O'Donnell presented his functional HDL HDRE\cite{hydra:old,donnell}. These two HDL's gave birth to numerous later approaches that are base
 more or less on them. 
 
+\par
 One of Sheeran's students, Coen Claessen, came later up with a monadic solution called Lava\cite{claessen:hardware}. Ingo Sanders et al
 introduced an approach, ForSyDe \cite{forsyde:phd,forsyde:ieee} that is based on meta programming techniques. Lava, ForSyDe and also Mydra %TODO : Hydra reference in literature
 represent HDL's embedded into the functional programming language Haskell; MyHDL \cite{myhdl} is embedded in the functional flavored
 interpreting language Python. There is HML\cite{hml}, a simple HDL which is embedded inside ML, another functional programming language. 
 
+\par
 Than there are functional languages that are exclusively designed to describe hardware, like the language SAFL (=Statically Allocated
 Functional Language)\cite{sharp,sharp:flash,sharp:codesign}. This one compiles direct into a netlists; it does not support dynamic allocated
 storage like heaps or stacks since these kind of software features do not map well on silicone. 
 
+\par
 Another candidate for the functional metaprogramming languages section is the language \reflect \cite{reflect}. This one is developed at
 Intel and tailored for hardware design and theorem proving. 
 
+\par
 There are good reasons why metaprogramming (also called \emph{reflexivity}) are beneficial for the use as HDLs. Metaprogramming allows a
 program to have a representation of itself, usually by providing data structure of the abstract syntax tree. With this tool at hand the
 developer is able to \emph{compute} parts of their program rather than \emph{write}them. This leads to a direct and natural implementation
 of program transformations. Haskell also allows to metaprogramming through a library called ``Template Haskell''\cite{haskell:template}. 
 
+\par
 With cryptol\cite{cryptol:programming} another class of functional HDLs enters the scene. While all the other HDL's are general purpose,
 cryptol is designed to model cryptographic hardware. A sublanguage of cryptol is designed by Galois, explicit to generate FPGA
 implementations \cite{cryptol:fpga}. Cryptol has lately been adopted by an American agency and isn't public developed anymore.
 
 
 \section{Why Arrows?}
-... and not Monads or functions or simple datatypes ...
+In this section we give a short introduction to the concept of arrows; we compare them very brief to monads which are better known in the
+functional community. We the show why arrows are a good way to describe hardware. 
+
+\subsection{What are arrows}
+The concept of a function is a pillar in functional programming and can't be compared to functions in imperative/procedural programming
+languages. In languages of the latter kind, functions are seen as structuring elements that stuff imperative expressions together while also
+make them available by a specific identifier, the function name. A function in the functional sense is oriented along the mathematical
+definition of a function which is defined as the projection of input parameters to output values. If taken serious, this definition leads
+to only deterministic behaving functions.  
+
+\par
+So the question is, how to express side effects (state changes like IO) with the use of deterministic functions. This dilemma can be solved
+by making the state changes deterministic, which is done via a \emph{world parameter}. A function that takes such a world parameter than
+is able to react on the world's state, can apply changes and could deliver it in the return value. With this trick it is possible to express
+IO-, random or any side effecting function in a functional language. This world parameter could also be used to gain the control flow back,
+such that a specific chain of functions, is executed in the given order. Because it is tedious to keep track of this world parameter, it is
+captured inside a specific data structure, which then is called a Monad. With monads the developer is able to determine a specific control
+flow. On one side this is better than no control flow but on the other side it is to specific to design parallel computations which are
+usual found in hardware designs. 
+
+\par
+At this point, the concept of arrows comes to play, which represents the generalization of monads \cite{Hughes98generalisingmonads}. While
+the monad is the abstract interface to the control flow of a function, the more general arrow states an abstract interface to all features
+of a function.
+
+
+\subsection{Arrows in the Hardware Design Process}
+While of c
+
 
 \begin{itemize}
 \item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
