@@ -40,9 +40,34 @@ From the authors point of view it is not only natural to describe hardware with 
 the logical step.
 
 \section{Hardware Modeling in Haskell: Recent Approaches}
+As stated in the introduction, modeling hardware in functional languages is old news, there have been various approaches in the past. The
+beginning dates back into the early 80s where Mary Sheeran came up with a functional HDL muFP\cite{sheeran:muFP}. In the same decade John
+O'Donnell presented his functional HDL HDRE\cite{hydra:old,donnell}. These two HDL's gave birth to numerous later approaches that are base
+more or less on them. 
+
+One of Sheeran's students, Coen Claessen, came later up with a monadic solution called Lava\cite{claessen:hardware}. Ingo Sanders et al
+introduced an approach, ForSyDe \cite{forsyde:phd,forsyde:ieee} that is based on meta programming techniques. Lava, ForSyDe and also Mydra %TODO : Hydra reference in literature
+represent HDL's embedded into the functional programming language Haskell; MyHDL \cite{myhdl} is embedded in the functional flavored
+interpreting language Python. There is HML\cite{hml}, a simple HDL which is embedded inside ML, another functional programming language. 
+
+Than there are functional languages that are exclusively designed to describe hardware, like the language SAFL (=Statically Allocated
+Functional Language)\cite{sharp,sharp:flash,sharp:codesign}. This one compiles direct into a netlists; it does not support dynamic allocated
+storage like heaps or stacks since these kind of software features do not map well on silicone. 
+
+Another candidate for the functional metaprogramming languages section is the language \reflect \cite{reflect}. This one is developed at
+Intel and tailored for hardware design and theorem proving. 
+
+There are good reasons why metaprogramming (also called \emph{reflexivity}) are beneficial for the use as HDLs. Metaprogramming allows a
+program to have a representation of itself, usually by providing data structure of the abstract syntax tree. With this tool at hand the
+developer is able to \emph{compute} parts of their program rather than \emph{write}them. This leads to a direct and natural implementation
+of program transformations. Haskell also allows to metaprogramming through a library called ``Template Haskell''\cite{haskell:template}. 
+
+With cryptol\cite{cryptol:programming} another class of functional HDLs enters the scene. While all the other HDL's are general purpose,
+cryptol is designed to model cryptographic hardware. A sublanguage of cryptol is designed by Galois, explicit to generate FPGA
+implementations \cite{cryptol:fpga}. Cryptol has lately been adopted by an American agency and isn't public developed anymore.
+
 
 \section{Why Arrows?}
-
 ... and not Monads or functions or simple datatypes ...
 
 \begin{itemize}
