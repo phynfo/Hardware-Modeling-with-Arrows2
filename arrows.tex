@@ -5,6 +5,7 @@
 \begin{document}
 
 \section{Introduction}
+\label{introduction}
 With the rise of rapid prototyping and development methodologies in the hardware community, hardware has started to get softer. FPGA's are a
 major contributor for this trend. It is only natural to take benefits out of the existing software engineering concepts. This can be seen in
 hardware description languages like VHDL or Verilog. Both have taken their syntax from common languages like C and ADA. Those two are
@@ -41,6 +42,7 @@ From the authors point of view it is not only natural to describe hardware with 
 the logical step.
 
 \section{Hardware Modeling in Haskell: Recent Approaches}
+\label{recent_approaches}
 As stated in the introduction, modeling hardware in functional languages is old news, there have been various approaches in the past. The
 beginning dates back into the early 80s where Mary Sheeran came up with a functional HDL muFP\cite{sheeran:muFP}. In the same decade John
 O'Donnell presented his functional HDL HDRE\cite{hydra:old,donnell}. These two HDL's gave birth to numerous later approaches that are base
@@ -101,17 +103,26 @@ of a function.
 
 
 \subsection{Arrows in the Hardware Design Process}
-While of c
+The similarities of functions on the one hand and hardware blocks on the other hand is well known and demonstrated in the functional
+programming literature for the last decades \cite{Sheeran:PerfectMatch,Donnell}. While there are impressive similarities between those two,
+there are also differences that need to be handled. Every approach that models hardware via functional functions needs to face the fact,
+that these functions are extreme powerful. Functional concepts like higher-order functions, curried functions, etc\. doesn't map to silicon
+at all. A functional solution needs to handle theses differences by some means or other. This gives rise to such manifold solutions as
+described in section~\ref{recent_approaches}. The approaches cope this problem via monads, avoidance of functional features or via meta
+programming techniques. 
+
+\par
+We think, that arrows are just the right path to attack this kind of problems. 
 
 
 \begin{itemize}
-\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
 \item Functional Functions are too powerfull; arrows allow to downgrade functions' features.
 \item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
 \item Arrows resemble premonoidal effect categories and ...   are a common way for category theorists to model the
 semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
 semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
 Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
+\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
 \end{itemize}
 
 \section{First Approach: Classical Arrows}
