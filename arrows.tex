@@ -5,30 +5,220 @@
 \begin{document}
 
 \section{Introduction}
-
-Why try to model hardware in functional languages (data flow view is more natural to functional languages)
-
-\section{Hardware Modeling in Haskell: Recent Approaches}
-
-\section{Why Arrows?}
-
-... and not Monads or functions or simple datatypes ...
+\label{introduction}
+With the rise of rapid prototyping and development methodologies in the hardware community, hardware has started to get softer. FPGA's are a
+major contributor for this trend. It is only natural to take benefits out of the existing software engineering concepts. This can be seen in
+hardware description languages like VHDL or Verilog. Both have taken their syntax from common languages like C and ADA. Those two are
+typical imperative languages, but there are arguments that declarative languages fit more natural to the problem of hardware modeling.
+Functional programming languages like \emph{Haskell} are declarative.
 
 \begin{itemize}
-\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
-\item Functional Functions are too powerfull; arrows allow to downgrade functions' features.
+  \item \emph{Referential transference}: While imperative languages force the programmer to prescribe the control flow a declarative
+    language is stateless. Stateless means, that the programmer does not describe the control flow, but the compiler is able to decide the
+    order of execution. Therefore concurrency isn't something that needs to be simulated (like it's done in System-C) but fits natural in
+    the language and the developed code.
+  \item \emph{Composition}: Functional programs are build out of the composition of small pieces. Again this attributes to hardware design
+    where complex systems are also build out of the composition of smaller pieces.
+  \item \emph{Type systems}: Functional languages like Haskell come with an expressive type system which helps to detect errors early and
+    also helps the developer to a cleaner design.
+  \item \emph{Higher-order functions}: Typical functional design techniques like higher order functions can be used to abstract common
+    circuit structures, so that the developers task is to instantiate them in order to get circuits.
+  \item \emph{Lazy evaluation}: With the help of lazy evaluating languages it is easy to express infinite data structures, which also maps
+    natural to stream processing hardware specifications. 
+\end{itemize}
+
+This properties lead to some interesting development possibilities which are not new in the functional programming world, but are rather
+unusual if not impossible in languages like VHDL. With the use of higher order functions developers are able to transform circuits just to
+their needed behavior. The clean detachment of the languages semantics from the circuits specification is the key that leads to an extreme
+flexible design. Last but not least the clear expressiveness of functional languages makes it easy to \emph{1:} reason, \emph{2:} realize
+and \emph{3:} analyze functional programs. % TODO do i need to cite sheeran here?
+
+\par
+In fact, these are old news, functional programming pioneers pointed to the use of functional languages as perfect hardware design languages
+long before. \cite{Sheeran} %O'Donnell and all the others\ldots
+
+\par
+From the authors point of view it is not only natural to describe hardware with the help of functional programming languages, but also it is
+the logical step.
+
+\section{Hardware Modeling in Haskell: Recent Approaches}
+\label{recent_approaches}
+As stated in the introduction, modeling hardware in functional languages is old news, there have been various approaches in the past. The
+beginning dates back into the early 80s where Mary Sheeran came up with a functional HDL muFP\cite{sheeran:muFP}. In the same decade John
+O'Donnell presented his functional HDL HDRE\cite{hydra:old,donnell}. These two HDL's gave birth to numerous later approaches that are base
+more or less on them. 
+
+\par
+One of Sheeran's students, Coen Claessen, came later up with a monadic solution called Lava\cite{claessen:hardware}. Ingo Sanders et al
+introduced an approach, ForSyDe \cite{forsyde:phd,forsyde:ieee} that is based on meta programming techniques. Lava, ForSyDe and also Mydra %TODO : Hydra reference in literature
+represent HDL's embedded into the functional programming language Haskell; MyHDL \cite{myhdl} is embedded in the functional flavored
+interpreting language Python. There is HML\cite{hml}, a simple HDL which is embedded inside ML, another functional programming language. 
+
+\par
+Than there are functional languages that are exclusively designed to describe hardware, like the language SAFL (=Statically Allocated
+Functional Language)\cite{sharp,sharp:flash,sharp:codesign}. This one compiles direct into a netlists; it does not support dynamic allocated
+storage like heaps or stacks since these kind of software features do not map well on silicone. 
+
+\par
+Another candidate for the functional metaprogramming languages section is the language \reflect \cite{reflect}. This one is developed at
+Intel and tailored for hardware design and theorem proving. 
+
+\par
+There are good reasons why metaprogramming (also called \emph{reflexivity}) are beneficial for the use as HDLs. Metaprogramming allows a
+program to have a representation of itself, usually by providing data structure of the abstract syntax tree. With this tool at hand the
+developer is able to \emph{compute} parts of their program rather than \emph{write}them. This leads to a direct and natural implementation
+of program transformations. Haskell also allows to metaprogramming through a library called ``Template Haskell''\cite{haskell:template}. 
+
+\par
+With cryptol\cite{cryptol:programming} another class of functional HDLs enters the scene. While all the other HDL's are general purpose,
+cryptol is designed to model cryptographic hardware. A sublanguage of cryptol is designed by Galois, explicit to generate FPGA
+implementations \cite{cryptol:fpga}. Cryptol has lately been adopted by an American agency and isn't public developed anymore.
+
+
+\section{Why Arrows?}
+In this section we give a short introduction to the concept of arrows; we compare them very brief to monads which are better known in the
+functional community. We the show why arrows are a good way to describe hardware. 
+
+\subsection{What are arrows}
+The concept of a function is a pillar in functional programming and can't be compared to functions in imperative/procedural programming
+languages. In languages of the latter kind, functions are seen as structuring elements that stuff imperative expressions together while also
+make them available by a specific identifier, the function name. A function in the functional sense is oriented along the mathematical
+definition of a function which is defined as the projection of input parameters to output values. If taken serious, this definition leads
+to only deterministic behaving functions.  
+
+\par
+So the question is, how to express side effects (state changes like IO) with the use of deterministic functions. This dilemma can be solved
+by making the state changes deterministic, which is done via a \emph{world parameter}. A function that takes such a world parameter than
+is able to react on the world's state, can apply changes and could deliver it in the return value. With this trick it is possible to express
+IO-, random or any side effecting function in a functional language. This world parameter could also be used to gain the control flow back,
+such that a specific chain of functions, is executed in the given order. Because it is tedious to keep track of this world parameter, it is
+captured inside a specific data structure, which then is called a Monad. With monads the developer is able to determine a specific control
+flow. On one side this is better than no control flow but on the other side it is to specific to design parallel computations which are
+usual found in hardware designs. 
+
+\par
+At this point, the concept of arrows comes to play, which represents the generalization of monads \cite{Hughes98generalisingmonads}. While
+the monad is the abstract interface to the control flow of a function, the more general arrow states an abstract interface to all features
+of a function.
+
+
+\subsection{Arrows in the Hardware Design Process}
+The similarity of functions on the one hand and hardware blocks on the other hand is well known and demonstrated in the functional
+programming literature for the last decades \cite{Sheeran:PerfectMatch,Donnell}. While these similarities between those two are impressive,
+there are also differences that need to be handled. Every approach that models hardware via functional functions has to face the fact, that
+functional functions are extreme powerful. Functional concepts like higher-order functions, curried functions, etc\. doesn't map to silicon at
+all. 
+
+\par
+We conclude that Haskell functions correlate to logic gates on the one hand and offer some incompatible features on the other hand. To
+describe hardware components with functional languages, only a very specific subset of the features of a Haskell function can be mapped to
+circuit design. Every functional solution tackles theses differences by some means or other. This gives rise to such a manifold solution
+space as described in section~\ref{recent_approaches}. The approaches cope this problem via monads, avoidance of functional features or via
+meta programming techniques. 
+
+\par
+As monads give the developer a handle to control the execution flow of functional programs, arrows offer a handle not only to the control
+flow of functional functions, but to many more features of functions. In example, it is possible to specify the execution order but it is
+not mandatory to do so. Such a behavior where parallelism is implicit, naturally fits to the behavior of silicone where parallelism also is
+implicit. Another example is the ad-hoc creation of functions, so called lambdas in Haskell. The arrow interface provides a function that
+can ``lift'' any other function into an arrow and so this mechanism can be used to specify lambda expressions inside arrows. As said
+earlier, arrows provide handles to different building blocks of functional functions. Ad hoc creation of hardware blocks is something that
+isn't possible and therefor is not used to model hardware. %% TODO : Kommt der unterschied zur vermeidung functionaler features hier raus?
+
+\begin{itemize}
 \item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
-\item Arrows resemble premonoidal effect categories and ...   are a common way for category theorists to model the
+\item Arrows resemble premonoidal effect categories and\ldots   are a common way for category theorists to model the
 semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
 semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
 Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
+\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
 \end{itemize}
+
+\par
+Haskells type of a function that takes input of type $b$ to output of type $c$ is denoted as $b \rightarrow c$, with the $(\rightarrow)$
+being a \emph{higher-order-type}. This higher order type takes two type arguments (namely $b$ and $c$) and yields a type as result (namely
+the function type $(\rightarrow)\ b\ c$). $(\rightarrow)$ is just the prefix notation of the infix type operator $\rightarrow$. To take
+control over the features of a function, the function type operator $\rightarrow$ needs to be replaced by something more general; a higher
+order type variable $a$. This leads to the prefix written type:
+
+\begin{center}
+\begin{minipage}{.2\textwidth}
+\begin{haskell**}
+a b c
+\end{haskell**} \end{minipage} \end{center}
+
+Because this is to general to be of any use, Haskells \emph{type classes} are used to specify the properties of that type variable $a$. This
+type class is called \hs{Arrow}. 
+
+\begin{code}
+class Arrow a b c where 
+  arr   :: (b -> c) -> a b c
+  (>>>) :: a b c    -> a c d   -> a b d
+  (***) :: a b c    -> a b' c' -> a (b, b') (c, c')
+  (&&&) :: a b c    -> a b  c' -> a  b      (c, c')
+\end{code}
+
+In this type class a function \hs{arr} to lift ordinary functions into an arrow, the bind operator \hs{(>>>)}, as well as the combination
+operator \hs{(***)} are defined. \hs{(&&&)} is just a special case of \hs{(***)}. 
+
+\par
+With the bind operator \hs{(>>>)} two arrows are combined into a new one and the specific arrows are executed in sequence from left to
+right. This corresponds directly to sequencing circuit, where one gate computes first with it's outputs solder to the next gate. 
+
+\par 
+To model parallel computation the \hs{(***)}-operator is used. It take two different data flows ($b$ and $b'$), passes them into the first
+and the second arrow. The results ($c$ and $c'$) are than combined and yielded as overall result. The \hs{(&&&)}-operator takes only one
+input and provides it to both inner arrows.
+
+\grafik[.6]{ArrowStarStarStar}{Schematic representation of \hs{(***)}}{figure:ststst}
+\grafik[.6]{ArrowAndAndAnd}{Schematic representation of \hs{(&&&)}}{figure:ananan}
+
+\par
+Interestingly, this structure is at the same time the implementation of a lately developed concept in category theory, called \boxit{Freyd
+categories} which are essentially premonoidal effect categories\cite{Heunen06arrows, Hughes98generalisingmonads,PatersonRA}. The term Freyd
+category marks essentially a functor with another category in its domain. The important part is, that it specifies a category of
+computations and therefore a mathematical definition for category theorists to model the semantics of programming languages. To have such a
+direct connection to category theory helps to underly our approach with mathematical proof in the future. This also shows that the arrow
+approach is a generic semantic for describing hardware systems. Also such a generic system not only can be used to model the hardware, but
+also to synthesis, code generation, simulation or property proofing. 
+
+\par
+And there are more possibilities while using this approach. Another interesting arrow typeclass is the \hs{ArrowChoice} class. With a choice
+arrow a model of different execution paths, depending on input parameters, could be expressed. This behavior is translated into Haskell's
+\hs{Either} type and so it the result of type \hs{Either}. 
+
+\begin{code}[]
+class ArrowChoice a where
+  (+++) :: a b c -> a b' c' -> Either (b b') (c c')
+  (|||) :: a b c -> a b' c  -> Either (b b')  c 
+\end{code}
+
+Here again are two incarnations of that choice-operator. There is the \hs{(|||)}-operator, which combines two arrows with different input
+types to an arrow of the same output type. Than there is the more abstract version, the \hs{(+++)}-operator which not only accepts two different input types, but also returns two different output types.  
+
+\xfig[.8]{ArrowPlPlPl}{Schematic representation of \hs{+++}}{figure:plplpl}
+\xfig[.8]{ArrowPiPiPi}{Schematic representation of \hs{|||}}{figure:pipipi}
+
+\par
+For Hardware development interesting is also the \hs{ArrowLoop} typeclass that is able to express recursive circuits where the output value
+is feed back into the arrow..
+\begin{code}[]
+class ArrowLoop a where
+  loop :: a (b, d) (c, d) -> a b c
+\end{code}
+
+This one is essential for hardware development because there are considerable few circuits which go without recursion. 
+
+\xfig[.8]{ArrowLp}{Schematic representation of loop}{figure:loop}
+
+
+
 
 \section{First Approach: Classical Arrows}
 
 \subsection{Implementation}
 
-Generating Netlists, ...
+Generating Netlists,\ldots
 
 \subsection{Simple Example}
 
