@@ -1,6 +1,27 @@
 
 \documentclass{article}
 \title{Hardware Modeling with Functional Datastructures: Functions, Arrows, Tupels, Vectors, and Inspection} 
+\newcommand{\grafik}[4][0.9]{%        % Bild einfügen, [Skalierung], {Dateiname ohne Endung}, {Beschriftung}, {label zum Referenzieren}
+    \begin{figure}[ht]%               % before: htbp 
+        \begin{center}
+            \includegraphics[width=#1\columnwidth]{Images/#2}
+            \caption{\label{#4} #3}
+            
+        \end{center}
+    \end{figure}
+}
+
+\newcommand{\xfig}[4][0.9] {%      %xfig figure einfügen, [Skalierung], {Dateiname ohne Endung}, {Beschriftung}, {label}
+    \begin{figure}[ht]
+        \begin{center}
+            \graphicspath{{./}{Images/}}
+            \scalebox{#1}{%
+                \input{Images/#2}
+            }
+            \caption{\label{#4} #3}
+        \end{center}
+    \end{figure}
+}
 
 \begin{document}
 
@@ -8,7 +29,7 @@
 \label{introduction}
 With the rise of rapid prototyping and development methodologies in the hardware community, hardware has started to get softer. FPGA's are a
 major contributor for this trend. It is only natural to take benefits out of the existing software engineering concepts. This can be seen in
-hardware description languages like VHDL or Verilog. Both have taken their syntax from common languages like C and ADA. Those two are
+hardware description languages like VHDL or Verilog. Both have taken their syntax from common languages like C and ADA\@. Those two are
 typical imperative languages, but there are arguments that declarative languages fit more natural to the problem of hardware modeling.
 Functional programming languages like \emph{Haskell} are declarative.
 
@@ -28,7 +49,7 @@ Functional programming languages like \emph{Haskell} are declarative.
 \end{itemize}
 
 This properties lead to some interesting development possibilities which are not new in the functional programming world, but are rather
-unusual if not impossible in languages like VHDL. With the use of higher order functions developers are able to transform circuits just to
+unusual if not impossible in languages like VHDL\@. With the use of higher order functions developers are able to transform circuits just to
 their needed behavior. The clean detachment of the languages semantics from the circuits specification is the key that leads to an extreme
 flexible design. Last but not least the clear expressiveness of functional languages makes it easy to \emph{1:} reason, \emph{2:} realize
 and \emph{3:} analyze functional programs. % TODO do i need to cite sheeran here?
@@ -228,12 +249,12 @@ Generating Netlists,\ldots
 
 \begin{itemize}
 \item Problems with nested tupels. Re-Tupeling is not very handy.
-\item Tupels are not an appropriate model for hardware wires. (e.g. input for a 3-ary AND: is it (x,(y,z)) or ((x,y),z)) 
-\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (...)}) is not available for later calculations (to generate the netlists, usw.)
+\item Tupels are not an appropriate model for hardware wires. (e.g.\ input for a 3-ary AND: is it (x,(y,z)) or ((x,y),z)) 
+\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (\ldots)}) is not available for later calculations (to generate the netlists, usw.)
 \end{itemize}
 
 The tupel-problem could be avoided (at least superficially) with the use of Patterson's proc-Notation. The proc-Notation
-abstracts the tupels ...
+abstracts the tupels \ldots 
 
 
 \section{Coping with the Tupel-Problem -- "`Vector-Arrows"'}
@@ -252,7 +273,7 @@ class VArrow a where
 \subsection{Type-Family-Solutions}
 
 -  :+: and :-:
-- ....
+- \ldots
 
 Conclusion: That is dependent typing and Haskell is not (yet) a dependently typed function programming laguage. And all
 in all it seems that the Vec-Type together with the Arrows-Instances is too much dependent typing for Haskell
