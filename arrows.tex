@@ -103,33 +103,122 @@ of a function.
 
 
 \subsection{Arrows in the Hardware Design Process}
-The similarities of functions on the one hand and hardware blocks on the other hand is well known and demonstrated in the functional
-programming literature for the last decades \cite{Sheeran:PerfectMatch,Donnell}. While there are impressive similarities between those two,
-there are also differences that need to be handled. Every approach that models hardware via functional functions needs to face the fact,
-that these functions are extreme powerful. Functional concepts like higher-order functions, curried functions, etc\. doesn't map to silicon
-at all. A functional solution needs to handle theses differences by some means or other. This gives rise to such manifold solutions as
-described in section~\ref{recent_approaches}. The approaches cope this problem via monads, avoidance of functional features or via meta
-programming techniques. 
+The similarity of functions on the one hand and hardware blocks on the other hand is well known and demonstrated in the functional
+programming literature for the last decades \cite{Sheeran:PerfectMatch,Donnell}. While these similarities between those two are impressive,
+there are also differences that need to be handled. Every approach that models hardware via functional functions has to face the fact, that
+functional functions are extreme powerful. Functional concepts like higher-order functions, curried functions, etc\. doesn't map to silicon at
+all. 
 
 \par
-We think, that arrows are just the right path to attack this kind of problems. 
+We conclude that Haskell functions correlate to logic gates on the one hand and offer some incompatible features on the other hand. To
+describe hardware components with functional languages, only a very specific subset of the features of a Haskell function can be mapped to
+circuit design. Every functional solution tackles theses differences by some means or other. This gives rise to such a manifold solution
+space as described in section~\ref{recent_approaches}. The approaches cope this problem via monads, avoidance of functional features or via
+meta programming techniques. 
 
+\par
+As monads give the developer a handle to control the execution flow of functional programs, arrows offer a handle not only to the control
+flow of functional functions, but to many more features of functions. In example, it is possible to specify the execution order but it is
+not mandatory to do so. Such a behavior where parallelism is implicit, naturally fits to the behavior of silicone where parallelism also is
+implicit. Another example is the ad-hoc creation of functions, so called lambdas in Haskell. The arrow interface provides a function that
+can ``lift'' any other function into an arrow and so this mechanism can be used to specify lambda expressions inside arrows. As said
+earlier, arrows provide handles to different building blocks of functional functions. Ad hoc creation of hardware blocks is something that
+isn't possible and therefor is not used to model hardware. %% TODO : Kommt der unterschied zur vermeidung functionaler features hier raus?
 
 \begin{itemize}
-\item Functional Functions are too powerfull; arrows allow to downgrade functions' features.
 \item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
-\item Arrows resemble premonoidal effect categories and ...   are a common way for category theorists to model the
+\item Arrows resemble premonoidal effect categories and\ldots   are a common way for category theorists to model the
 semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
 semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
 Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
 \item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
 \end{itemize}
 
+\par
+Haskells type of a function that takes input of type $b$ to output of type $c$ is denoted as $b \rightarrow c$, with the $(\rightarrow)$
+being a \emph{higher-order-type}. This higher order type takes two type arguments (namely $b$ and $c$) and yields a type as result (namely
+the function type $(\rightarrow)\ b\ c$). $(\rightarrow)$ is just the prefix notation of the infix type operator $\rightarrow$. To take
+control over the features of a function, the function type operator $\rightarrow$ needs to be replaced by something more general; a higher
+order type variable $a$. This leads to the prefix written type:
+
+\begin{center}
+\begin{minipage}{.2\textwidth}
+\begin{haskell**}
+a b c
+\end{haskell**} \end{minipage} \end{center}
+
+Because this is to general to be of any use, Haskells \emph{type classes} are used to specify the properties of that type variable $a$. This
+type class is called \hs{Arrow}. 
+
+\begin{code}
+class Arrow a b c where 
+  arr   :: (b -> c) -> a b c
+  (>>>) :: a b c    -> a c d   -> a b d
+  (***) :: a b c    -> a b' c' -> a (b, b') (c, c')
+  (&&&) :: a b c    -> a b  c' -> a  b      (c, c')
+\end{code}
+
+In this type class a function \hs{arr} to lift ordinary functions into an arrow, the bind operator \hs{(>>>)}, as well as the combination
+operator \hs{(***)} are defined. \hs{(&&&)} is just a special case of \hs{(***)}. 
+
+\par
+With the bind operator \hs{(>>>)} two arrows are combined into a new one and the specific arrows are executed in sequence from left to
+right. This corresponds directly to sequencing circuit, where one gate computes first with it's outputs solder to the next gate. 
+
+\par 
+To model parallel computation the \hs{(***)}-operator is used. It take two different data flows ($b$ and $b'$), passes them into the first
+and the second arrow. The results ($c$ and $c'$) are than combined and yielded as overall result. The \hs{(&&&)}-operator takes only one
+input and provides it to both inner arrows.
+
+\grafik[.6]{ArrowStarStarStar}{Schematic representation of \hs{(***)}}{figure:ststst}
+\grafik[.6]{ArrowAndAndAnd}{Schematic representation of \hs{(&&&)}}{figure:ananan}
+
+\par
+Interestingly, this structure is at the same time the implementation of a lately developed concept in category theory, called \boxit{Freyd
+categories} which are essentially premonoidal effect categories\cite{Heunen06arrows, Hughes98generalisingmonads,PatersonRA}. The term Freyd
+category marks essentially a functor with another category in its domain. The important part is, that it specifies a category of
+computations and therefore a mathematical definition for category theorists to model the semantics of programming languages. To have such a
+direct connection to category theory helps to underly our approach with mathematical proof in the future. This also shows that the arrow
+approach is a generic semantic for describing hardware systems. Also such a generic system not only can be used to model the hardware, but
+also to synthesis, code generation, simulation or property proofing. 
+
+\par
+And there are more possibilities while using this approach. Another interesting arrow typeclass is the \hs{ArrowChoice} class. With a choice
+arrow a model of different execution paths, depending on input parameters, could be expressed. This behavior is translated into Haskell's
+\hs{Either} type and so it the result of type \hs{Either}. 
+
+\begin{code}[]
+class ArrowChoice a where
+  (+++) :: a b c -> a b' c' -> Either (b b') (c c')
+  (|||) :: a b c -> a b' c  -> Either (b b')  c 
+\end{code}
+
+Here again are two incarnations of that choice-operator. There is the \hs{(|||)}-operator, which combines two arrows with different input
+types to an arrow of the same output type. Than there is the more abstract version, the \hs{(+++)}-operator which not only accepts two different input types, but also returns two different output types.  
+
+\xfig[.8]{ArrowPlPlPl}{Schematic representation of \hs{+++}}{figure:plplpl}
+\xfig[.8]{ArrowPiPiPi}{Schematic representation of \hs{|||}}{figure:pipipi}
+
+\par
+For Hardware development interesting is also the \hs{ArrowLoop} typeclass that is able to express recursive circuits where the output value
+is feed back into the arrow..
+\begin{code}[]
+class ArrowLoop a where
+  loop :: a (b, d) (c, d) -> a b c
+\end{code}
+
+This one is essential for hardware development because there are considerable few circuits which go without recursion. 
+
+\xfig[.8]{ArrowLp}{Schematic representation of loop}{figure:loop}
+
+
+
+
 \section{First Approach: Classical Arrows}
 
 \subsection{Implementation}
 
-Generating Netlists, ...
+Generating Netlists,\ldots
 
 \subsection{Simple Example}
 
