@@ -1,0 +1,47 @@
+\usepackage[pdftex]{color}
+% Haskell Code
+\usepackage{listings}
+\usepackage{fancyvrb}
+\usepackage{textcomp}
+\usepackage{setspace}
+
+\lstnewenvironment{haskell}[1][]{
+  \lstset{
+    fancyvrb=true, columns=flexible, language=haskell,
+    captionpos=b,
+    basicstyle=\ttfamily\small\setstretch{1},
+    commentstyle=\color{ggray}\slshape,
+    upquote=true,
+    emph={True,False}, emphstyle=\color{green},
+    literate=*{>>>}{{\textcolor{ggray}{>>>}}}{3}%
+             {...}{{\textcolor{ggray}{...}}}{3}%
+             {\{}{{\textcolor{blue}{\{}}}{1}%
+             {\}}{{\textcolor{blue}{\}}}}{1}%
+             %{=>}{{$\Rightarrow$ }}{2}%
+             {->}{{$\rightarrow$ }}{2},
+    stringstyle=\color{red}, showstringspaces=false,
+    keywordstyle=\color{blue},#1
+}}{}
+
+\newcommand{\hs}[1]{%
+  \lstinline[
+    fancyvrb=true, columns=flexible, language=haskell,
+    captionpos=b,
+    basicstyle=\ttfamily\setstretch{1},
+    commentstyle=\color{ggray}\slshape,
+    upquote=true,
+    emph={True,False}, emphstyle=\color{green},
+    literate=*{>>>}{{\textcolor{ggray}{>>>}}}{3}%
+             {...}{{\textcolor{ggray}{...}}}{3}%
+             {\{}{{\textcolor{blue}{\{}}}{1}%
+             {\}}{{\textcolor{blue}{\}}}}{1}%
+             %{=>}{{$\Rightarrow$ }}{2}%
+             {->}{{$\rightarrow$ }}{2},
+    stringstyle=\color{red}, showstringspaces=false,
+    keywordstyle=\color{blue}]!#1!%
+}
+
+\definecolor{gray}{gray}{0.5}
+\definecolor{ggray}{gray}{0.7}
+\definecolor{green}{rgb}{0,0.5,0}
+
