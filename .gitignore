@@ -1,0 +1,9 @@
+*.swp
+*.aux
+*.dvi
+*.log
+*.sty
+*.bbl
+*.blg
+*.unused
+Session.vim
