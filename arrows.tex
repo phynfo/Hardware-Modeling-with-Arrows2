@@ -5,6 +5,10 @@
 \usepackage{color}
 \usepackage{graphicx}
 \usepackage{listings}
+\usepackage{MnSymbol}
+\usepackage{amsmath}
+\usepackage{mathtools}
+
 \lstnewenvironment{haskell}{%
   \lstset{}% 
   \csname lst@SetFirstLabel\endcsname
@@ -36,10 +40,6 @@
 %        morekeywords={},    		% W?rter die als Schl?sselw?rter fett gedruckt werden sollen
 %        deletekeywords={} 		% W?rter die nicht als Schl?sselw?rter fett gedruckt werden sollen
 %}
-
-\usepackage{MnSymbol}
-\usepackage{amsmath}
-\usepackage{mathtools}
 
 \title{Hardware Modeling with Functional Datastructures: Functions, Arrows, Tupels, Vectors, and Inspection} 
 
@@ -73,6 +73,7 @@
 \newcommand{\boxit}[1]{\mbox{{\it #1}}}
 
 \newcommand{\hs}[1]{\mbox{\lstinline[basicstyle=\color{textgray}]!#1!}}
+\newcommand{\hsLine}[1]{$$\mbox{\tt{#1}}$$}
 
 
 \begin{document}
@@ -238,7 +239,6 @@ operator \hs{(***)} are defined. \hs{(&&&)} is just a special case of \hs{(***)}
 \par
 With the bind operator \hs{(>>>)} two arrows are combined into a new one and the specific arrows are executed in sequence from left to
 right. This corresponds directly to sequencing circuit, where one gate computes first with it's outputs solder to the next gate. 
-
 \par 
 To model parallel computation the \hs{(***)}-operator is used. It take two different data flows ($b$ and $b'$), passes them into the first
 and the second arrow. The results ($c$ and $c'$) are than combined and yielded as overall result. The \hs{(&&&)}-operator takes only one
@@ -268,7 +268,8 @@ class ArrowChoice a where
 \end{haskell}
 
 Here again are two incarnations of that choice-operator. There is the \hs{(|||)}-operator, which combines two arrows with different input
-types to an arrow of the same output type. Than there is the more abstract version, the \hs{(+++)}-operator which not only accepts two different input types, but also returns two different output types.  
+types to an arrow of the same output type. Than there is the more abstract version, the \hs{(+++)}-operator which not only accepts two
+different input types, but also returns two different output types.  
 
 \xfig[.8]{ArrowPlPlPl}{Schematic representation of \hs{+++}}{figure:plplpl}
 \xfig[.8]{ArrowPiPiPi}{Schematic representation of \hs{|||}}{figure:pipipi}
@@ -288,9 +289,254 @@ This one is essential for hardware development because there are considerable fe
 
 
 
+
 \section{First Approach: Classical Arrows}
+Within this section, we present a basic cycle redundancy check implementation with the design method of arrows. The example shows a typical
+way to express hardware with the functional method and also the flexibility of a functional approach is demonstrated. This is done by
+implementing multiple CRC's with differing polynomials. How to generate netlists out of the functional data structure is shown later on.
+After that, the problems with classical arrows are highlighted and solutions are discussed.
+
 
 \subsection{Implementation}
+The calculation of a specific CRC to some input data is based upon a mathematical method called a polynomial division. The reminder of that
+devision is the CRC Checksum. The original data padded by the CRC results in 0 if that devision is done again. 
+
+\par
+First of all a few operators are shown, that help to build the hardware later. There is the function \hs{mvRight} 
+
+\begin{haskell}
+mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
+mvRight 
+  =   aDistr
+  >>> first aSnd
+\end{haskell} 
+
+
+\par 
+There are lots of CRC-Codes out there and every one is equipped with a polynomial that especially fits the needs of its domain. In this
+examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
+\begin{align*}
+  \text{USB} &: x^5 + x^2 + 1 \\
+  \text{CCIT}&: x^4 + x   + 1 
+\end{align*}
+
+
+
+\begin{itemize}
+  \item 
+    \begin{itemize}
+      \item USB  - Polynom
+      \item CCIT - Polynom
+    \end{itemize}
+
+  \item 
+    \begin{itemize}
+      \item Operator >:>
+      \item Function mvRight
+      \item Function toInnerN
+    \end{itemize}
+
+  \item
+    \begin{itemize}
+      \item crc\_checksum\_8
+      \item crc\_checksum\_usb\_8
+      \item crc\_checksum\_ccit\_8
+    \end{itemize}
+    
+\end{itemize}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+%{-# LANGUAGE Arrows,
+%             NoMonomorphismRestriction,
+%             RebindableSyntax #-}
+%module CRC 
+%where
+%
+%import Prelude
+%
+%import Control.Category ((>>>))
+%
+%import Circuit
+%import Circuit.Arrow
+%import Circuit.Defaults
+%
+%infixr 0 >:>
+%
+%(>:>) aA aB = aA >>> (second aB)
+%
+%mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
+%mvRight
+%    =   aDistr
+%    >>> first aSnd
+%
+%
+%
+%crc_polynom_ccit ::  Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, Bool))))  (Bool, (Bool, (Bool, Bool)))
+%crc_polynom_ccit 
+%    =   mvRight >:> mvRight >:>
+%        (   aDistr 
+%        >>> (aXor *** aXor)
+%        )
+%
+%-- crc_polynom_ccit 
+%--  = proc (x4, (x3, (x2, (x1, x0)))) -> do
+%--      o1 <- aXor -< (x4, x0)
+%--      o2 <- aXor -< (x4, x1)
+%--      o3 <- aId  -< (x2)
+%--      o4 <- aId  -< (x3)
+%--      returnA    -< (o4, (o3, (o2, o1)))
+%
+%crc_polynom_usb ::   Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, Bool)))))  (Bool, (Bool, (Bool, (Bool, Bool))))
+%crc_polynom_usb
+%    =   mvRight >:> mvRight >:>
+%        (   aDistr
+%        >>> aXor *** (mvRight >:> aXor)
+%        )
+%
+%-- crc_polynom_usb
+%--  = proc (x5, (x4, (x3, (x2, (x1, x0))))) -> do
+%--      o1 <- aXor -< (x5, x0)
+%--      o2 <- aId  -< (x1)
+%--      o3 <- aXor -< (x5, x2)
+%--      o4 <- aId  -< (x3)
+%--      o5 <- aId  -< (x4)
+%--      returnA    -< (o5, (o4, (o3, (o2, o1))))
+%
+%crc_polynom_sdmmc :: Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool)))))))  (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))
+%crc_polynom_sdmmc
+%    =   mvRight >:> mvRight >:> mvRight >:>
+%        (   aDistr
+%        >>> aXor *** (mvRight >:> mvRight >:> aXor)
+%        )
+%
+%-- crc_polynom_sdmmc
+%--  = proc (x7, (x6, (x5, (x4, (x3, (x2, (x1, x0))))))) -> do
+%--      o1 <- aXor -< (x7, x0)
+%--      o2 <- aId  -< (x1)
+%--      o3 <- aId  -< (x2)
+%--      o4 <- aXor -< (x7, x3)
+%--      o5 <- aId  -< (x4)
+%--      o6 <- aId  -< (x5)
+%--      o7 <- aId  -< (x6)
+%--      returnA    -< (o7, (o6, (o5, (o4, (o3, (o2, o1))))
+%
+%    
+%
+%--                                    3      2      1     0         2      1     0
+%inner_crc_3ord :: Arrow a => Grid a (Bool, (Bool, (Bool, Bool)))  (Bool, (Bool, Bool))
+%inner_crc_3ord 
+%    =   aDistr
+%    >>> aSnd *** aDistr
+%    >>> second (aXor *** aXor)
+%
+%
+%toInner3
+%    =   mvRight 
+%    >:> mvRight 
+%    >:> aFlip
+%
+%toInner4
+%    =   mvRight
+%    >:> mvRight 
+%    >:> mvRight 
+%    >:> aFlip
+%
+%toInner5
+%    =   mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> aFlip
+%
+%toInner7
+%    =   mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> aFlip
+%
+%toInner8
+%    =   mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> mvRight
+%    >:> aFlip
+%
+%
+%-- crc_checksum_8 crc_polynom polySkip padding start rest
+%--     = proc 
+%crc_checksum_8 crc_polynom polySkip padding start rest
+%    =   (padding &&& aId)
+%    >>> toInner8
+%
+%    >>> (start &&& rest)
+%    >>> first (crc_polynom)
+%
+%    >>> step
+%    >>> step
+%    >>> step
+%    >>> step
+%    >>> step
+%    >>> step
+%
+%    >>> aFlip
+%    >>> polySkip
+%    >>> crc_polynom
+%
+%    where step =   a_aBC2ABc
+%               >>> first 
+%                   (   aFlip
+%                   >>> polySkip
+%                   >>> crc_polynom
+%                   )
+%
+%
+%crc_test
+%    = crc_checksum_8 
+%        inner_crc_3ord
+%        toInner3
+%        (aConst (False, (False, False)))
+%        (second (second (second aFst)))
+%        (aSnd >>> aSnd >>> aSnd >>> aSnd)
+%
+%crc_checksum_ccit_8 ::  Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, Bool)))
+%crc_checksum_ccit_8
+%    = crc_checksum_8   
+%        crc_polynom_ccit
+%        toInner4
+%        (aConst (False, (False, (False, False))))
+%        (second.second.second.second $ aFst)
+%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
+%
+%crc_checksum_usb_8 ::   Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, (Bool, Bool))))
+%crc_checksum_usb_8 
+%    = crc_checksum_8 
+%        crc_polynom_usb 
+%        toInner5 
+%        (aConst (False, (False, (False, (False, False)))))
+%        (second.second.second.second.second $ aFst)
+%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
+%
+%crc_checksum_sdmmc_8 :: Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))
+%crc_checksum_sdmmc_8
+%    = crc_checksum_8 
+%        crc_polynom_sdmmc
+%        toInner7
+%        (aConst (False, (False, (False, (False, (False, (False, False)))))))
+%        (second.second.second.second.second.second.second $ aFst)
+%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
+%
+%%%%%%%%%%%%%%%%%%%%
+
 
 Generating Netlists,\ldots
 
