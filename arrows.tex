@@ -1,8 +1,12 @@
-
 \documentclass{article}
 
 
-\input{/home/tobias/Globales/haskellstyle}
+\input{haskellstyle}
+
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage[fleqn]{amsmath}
+\usepackage{amssymb}
 
 \title{Hardware Modeling with Functional Datastructures: Functions, Arrows, Tupels, Vectors, and Inspection} 
 \newcommand{\grafik}[4][0.9]{%        % Bild einfügen, [Skalierung], {Dateiname ohne Endung}, {Beschriftung}, {label zum Referenzieren}
@@ -85,7 +89,7 @@ Functional Language)\cite{sharp,sharp:flash,sharp:codesign}. This one compiles d
 storage like heaps or stacks since these kind of software features do not map well on silicone. 
 
 \par
-Another candidate for the functional metaprogramming languages section is the language \reflect \cite{reflect}. This one is developed at
+Another candidate for the functional metaprogramming languages section is the language "`Reflect"' \cite{reflect}. This one is developed at
 Intel and tailored for hardware design and theorem proving. 
 
 \par
@@ -168,20 +172,20 @@ order type variable $a$. This leads to the prefix written type:
 
 \begin{center}
 \begin{minipage}{.2\textwidth}
-\begin{haskell**}
+\begin{haskell}
 a b c
-\end{haskell**} \end{minipage} \end{center}
+\end{haskell} \end{minipage} \end{center}
 
 Because this is to general to be of any use, Haskells \emph{type classes} are used to specify the properties of that type variable $a$. This
 type class is called \hs{Arrow}. 
 
-\begin{code}
+\begin{haskell}
 class Arrow a b c where 
   arr   :: (b -> c) -> a b c
   (>>>) :: a b c    -> a c d   -> a b d
   (***) :: a b c    -> a b' c' -> a (b, b') (c, c')
   (&&&) :: a b c    -> a b  c' -> a  b      (c, c')
-\end{code}
+\end{haskell}
 
 In this type class a function \hs{arr} to lift ordinary functions into an arrow, the bind operator \hs{(>>>)}, as well as the combination
 operator \hs{(***)} are defined. \hs{(&&&)} is just a special case of \hs{(***)}. 
@@ -195,12 +199,12 @@ To model parallel computation the \hs{(***)}-operator is used. It take two diffe
 and the second arrow. The results ($c$ and $c'$) are than combined and yielded as overall result. The \hs{(&&&)}-operator takes only one
 input and provides it to both inner arrows.
 
-\grafik[.6]{ArrowStarStarStar}{Schematic representation of \hs{(***)}}{figure:ststst}
-\grafik[.6]{ArrowAndAndAnd}{Schematic representation of \hs{(&&&)}}{figure:ananan}
+\xfig[.6]{ArrowStarStarStar}{Schematic representation of ***}{figure:ststst}
+\xfig[.6]{ArrowAndAndAnd}{Schematic representation of (\&\&\&)}{figure:ananan}
 
 \par
-Interestingly, this structure is at the same time the implementation of a lately developed concept in category theory, called \boxit{Freyd
-categories} which are essentially premonoidal effect categories\cite{Heunen06arrows, Hughes98generalisingmonads,PatersonRA}. The term Freyd
+Interestingly, this structure is at the same time the implementation of a lately developed concept in category theory, called Freyd~categories 
+which are essentially premonoidal effect categories\cite{Heunen06arrows, Hughes98generalisingmonads,PatersonRA}. The term Freyd
 category marks essentially a functor with another category in its domain. The important part is, that it specifies a category of
 computations and therefore a mathematical definition for category theorists to model the semantics of programming languages. To have such a
 direct connection to category theory helps to underly our approach with mathematical proof in the future. This also shows that the arrow
@@ -212,11 +216,11 @@ And there are more possibilities while using this approach. Another interesting 
 arrow a model of different execution paths, depending on input parameters, could be expressed. This behavior is translated into Haskell's
 \hs{Either} type and so it the result of type \hs{Either}. 
 
-\begin{code}[]
+\begin{haskell}[]
 class ArrowChoice a where
   (+++) :: a b c -> a b' c' -> Either (b b') (c c')
   (|||) :: a b c -> a b' c  -> Either (b b')  c 
-\end{code}
+\end{haskell}
 
 Here again are two incarnations of that choice-operator. There is the \hs{(|||)}-operator, which combines two arrows with different input
 types to an arrow of the same output type. Than there is the more abstract version, the \hs{(+++)}-operator which not only accepts two different input types, but also returns two different output types.  
@@ -227,16 +231,14 @@ types to an arrow of the same output type. Than there is the more abstract versi
 \par
 For Hardware development interesting is also the \hs{ArrowLoop} typeclass that is able to express recursive circuits where the output value
 is feed back into the arrow..
-\begin{code}[]
+\begin{haskell}[]
 class ArrowLoop a where
   loop :: a (b, d) (c, d) -> a b c
-\end{code}
+\end{haskell}
 
 This one is essential for hardware development because there are considerable few circuits which go without recursion. 
 
 \xfig[.8]{ArrowLp}{Schematic representation of loop}{figure:loop}
-
-
 
 
 \section{First Approach: Classical Arrows}
@@ -254,7 +256,7 @@ Generating Netlists,\ldots
 \begin{itemize}
 \item Problems with nested tupels. Re-Tupeling is not very handy.
 \item Tupels are not an appropriate model for hardware wires. (e.g.\ input for a 3-ary AND: is it (x,(y,z)) or ((x,y),z)) 
-\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (\ldots)}) is not available for later calculations (to generate the netlists, usw.)
+\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (...)}) is not available for later calculations (to generate the netlists, usw.)
 \end{itemize}
 
 The tupel-problem could be avoided (at least superficially) with the use of Patterson's proc-Notation. The proc-Notation
