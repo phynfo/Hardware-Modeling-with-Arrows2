@@ -6,9 +6,9 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{MnSymbol}
-\usepackage[fleqn]{amsmath} % flush eqations to the left
-\usepackage{amssymb}
-\usepackage{mathtools}
+\usepackage{amsmath} % flush eqations to the left
+%\usepackage{amssymb}
+%\usepackage{mathtools}
 
 %\input{haskellstyle}
 
@@ -290,6 +290,14 @@ This one is essential for hardware development because there are considerable fe
 \xfig[.8]{ArrowLp}{Schematic representation of loop}{figure:loop}
 
 
+% TODO 
+
+\begin{itemize}
+  \item arrows sind getupelt
+\end{itemize}
+
+
+
 \section{First Approach: Classical Arrows}
 Within this section, we present a basic cycle redundancy check implementation with the design method of arrows. The example shows a typical
 way to express hardware with the functional method and also the flexibility of a functional approach is demonstrated. This is done by
@@ -302,13 +310,26 @@ The calculation of a specific CRC to some input data is based upon a mathematica
 devision is the CRC Checksum. The original data padded by the CRC results in 0 if that devision is done again. 
 
 \par
-First of all a few operators are shown, that help to build the hardware later. There is the function \hs{mvRight} 
+First of all there are operators, that are essential to work with this classical arrows, because of their tuple like inner structure. This
+means, that each circuit is processing only a few inputs to output. The inputs therefore need to be reordered previous to each function
+call. One function, that is responsible for this tupel'ing process is \hs{mvRight}. This function takes an argument of the structure
+\((x,(y,z))\) to a different structure \((y,(x,z))\). 
+
 \begin{haskell}
 mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
 mvRight 
   =   aDistr
   >>> first aSnd
 \end{haskell} 
+
+The first arrow that is invoked here is \hs{aDistr} which is the pendant of the distribution law. \hs{aDistr} takes something of structure
+\(x, (y, z)\) into something of structure \((x, y), (x, z))\), it distributes the first element over the second one. That arrow is combined
+with another one, namely \hs{first aSnd}. In fact, this really is an arrow \hs{aSnd} with a scoop-operator \hs{first} such that \hs{aSnd}
+works only on the first element of the tuple. The resulting arrow takes a structure \(((x_1,x_2), (y_1,y_2))\) to a resulting structure
+\((x_2, (y_1, y_2))\). In the end the \hs{mvRight} arrow moves the first element of the tuple one step to the right. Of curse this function
+assumes a structure where always the first element of a tuple is a value, the second is another tuple such like: \((v_1, (v_2, (v_3, (v_4,
+v_5, (\dots)))))\)
+
 
 
 \par 
