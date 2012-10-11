@@ -6,8 +6,11 @@
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{MnSymbol}
-\usepackage{amsmath}
+\usepackage[fleqn]{amsmath} % flush eqations to the left
+\usepackage{amssymb}
 \usepackage{mathtools}
+
+%\input{haskellstyle}
 
 \lstnewenvironment{haskell}{%
   \lstset{}% 
@@ -244,12 +247,12 @@ To model parallel computation the \hs{(***)}-operator is used. It take two diffe
 and the second arrow. The results ($c$ and $c'$) are than combined and yielded as overall result. The \hs{(&&&)}-operator takes only one
 input and provides it to both inner arrows.
 
-\grafik[.6]{ArrowStarStarStar}{Schematic representation of \hs{(***)}}{figure:ststst}
-\grafik[.6]{ArrowAndAndAnd}{Schematic representation of \hs{(&&&)}}{figure:ananan}
+\xfig[.6]{ArrowStarStarStar}{Schematic representation of ***}{figure:ststst}
+\xfig[.6]{ArrowAndAndAnd}{Schematic representation of (\&\&\&)}{figure:ananan}
 
 \par
-Interestingly, this structure is at the same time the implementation of a lately developed concept in category theory, called \boxit{Freyd
-categories} which are essentially premonoidal effect categories\cite{Heunen06arrows, Hughes98generalisingmonads,PatersonRA}. The term Freyd
+Interestingly, this structure is at the same time the implementation of a lately developed concept in category theory, called Freyd~categories 
+which are essentially premonoidal effect categories\cite{Heunen06arrows, Hughes98generalisingmonads,PatersonRA}. The term Freyd
 category marks essentially a functor with another category in its domain. The important part is, that it specifies a category of
 computations and therefore a mathematical definition for category theorists to model the semantics of programming languages. To have such a
 direct connection to category theory helps to underly our approach with mathematical proof in the future. This also shows that the arrow
@@ -285,9 +288,6 @@ class ArrowLoop a where
 This one is essential for hardware development because there are considerable few circuits which go without recursion. 
 
 \xfig[.8]{ArrowLp}{Schematic representation of loop}{figure:loop}
-
-
-
 
 
 \section{First Approach: Classical Arrows}
