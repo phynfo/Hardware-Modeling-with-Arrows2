@@ -330,6 +330,15 @@ works only on the first element of the tuple. The resulting arrow takes a struct
 assumes a structure where always the first element of a tuple is a value, the second is another tuple such like: \((v_1, (v_2, (v_3, (v_4,
 v_5, (\dots)))))\)
 
+\par
+Another common task over these list like tuple structure is to apply one arrow to the front and than concentrate with the remaining arrows
+on the remaining structure. For this purpose the operator \hs{>:>} helps to clarify the 
+\begin{haskell}
+  aA >:> aB = aA >>> (second aB)
+\end{haskell} 
+
+The operator is based on the \hs{>>>} operator. 
+
 
 
 \par 
