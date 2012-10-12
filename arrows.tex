@@ -330,6 +330,7 @@ works only on the first element of the tuple. The resulting arrow takes a struct
 assumes a structure where always the first element of a tuple is a value, the second is another tuple such like: \((v_1, (v_2, (v_3, (v_4,
 v_5, (\dots)))))\)
 
+
 \par
 Another common task over these list like tuple structure is to apply one arrow to the front and than concentrate with the remaining arrows
 on the remaining structure. For this purpose the operator \hs{>:>} helps to clarify the 
@@ -337,8 +338,22 @@ on the remaining structure. For this purpose the operator \hs{>:>} helps to clar
   aA >:> aB = aA >>> (second aB)
 \end{haskell} 
 
-The operator is based on the \hs{>>>} operator. 
+The operator \hs{>:>} is based on the \hs{>>>} operator with a minor difference. The first supplied arrow is executed over the whole input
+data tuple, while the second arrow is only applied to the second part of that tuple. Such an operator comes handy while list like tuple
+structures are used and are processed from the left to the right. This is exactly the case for the polynomial division. 
 
+
+\par
+The \hs{toInner} function makes use of the previously defined operators. There are several \hs{toInner} functions, that only differ in the
+amount of steps the value is pushed into the list like tuple.
+\begin{haskell}
+toInner5
+  =   mvRight
+  >:> mvRight
+  >:> mvRight
+  >:> mvRight
+  >:> aFlip
+\end{haskell} 
 
 
 \par 
@@ -354,14 +369,6 @@ examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
 \begin{itemize}
   \item 
     \begin{itemize}
-      \item USB  - Polynom
-      \item CCIT - Polynom
-    \end{itemize}
-
-  \item 
-    \begin{itemize}
-      \item Operator >:>
-      \item Function mvRight
       \item Function toInnerN
     \end{itemize}
 
