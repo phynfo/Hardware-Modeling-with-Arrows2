@@ -203,12 +203,12 @@ earlier, arrows provide handles to different building blocks of functional funct
 isn't possible and therefor is not used to model hardware. %% TODO : Kommt der unterschied zur vermeidung functionaler features hier raus?
 
 \begin{itemize}
-\item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
-\item Arrows resemble premonoidal effect categories and\ldots   are a common way for category theorists to model the
-semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
-semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
-Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
-\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
+  \item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
+  \item Arrows resemble premonoidal effect categories and\ldots   are a common way for category theorists to model the
+  semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
+  semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
+  Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
+  \item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
 \end{itemize}
 
 \par
@@ -356,6 +356,51 @@ toInner5
 \end{haskell} 
 
 
+\par
+With \hs{crc\_checksum\_8} a higher order function is defined that abstracts the general principle behind an 8 bit CRC sum function. The
+developer only has to supply \hs{crc\_checksum\_8} with a CRC polynomial, with a polynomial skip function, with a padding value, and a start
+and a rest value. 
+\begin{haskell}
+crc_checksum_8 crc_polynom polySkip padding start rest
+  =   (padding &&& aId)
+  >>> toInner8
+
+  >>> (start &&& rest)
+  >>> first (crc_polynom)
+
+  >>> step
+  >>> step
+  >>> step
+  >>> step
+  >>> step
+  >>> step
+
+  >>> aFlip
+  >>> polySkip
+  >>> crc_polynom
+
+  where step =   a_aBC2ABc
+             >>> first 
+                 (   aFlip
+                 >>> polySkip
+                 >>> crc_polynom
+                 )   
+\end{haskell} 
+
+So this arrow actually abstracts the steps to be done to calculate a 8 bit CRC sum. With the first action the padding bits are perpended in
+front of the value bits and are than moved 8 bits into the tuple list. This is followed by two actions, namely \hs{start} and \hs{rest}.
+Keep in mind that the \hs{&&&} operator first duplicates its input and passes each arrow one copy. \hs{start} returns the $n$th value out
+of the tuple list and \hs{rest} skips all $n$ values. The results of \hs{start} is than fed into the first crc calculating function:
+\hs{crc\_polynom}. This is followed by exactly the amount of steps such that including starting and ending calculations, all bits are taken
+into account. In an $8$ bit CRC sum function these are $6$ steps. 
+
+\par
+Each step itself makes use of the associativity of arrows, so it moves brackets via the \hs{a_aBC2ABc} arrow which transforms a \((a, (b,
+c))\) structure into a \(((a, b), c)\) structure. On the first element of that tuple is than a flip command performed, followed by the
+appropriate \hs{polySkip} arrow. \hs{polySkip} itself is just a CRC specific \hs{toInner} arrow. Last but not least the actual
+\hs{crc\_polynom} is performed.
+
+
 \par 
 There are lots of CRC-Codes out there and every one is equipped with a polynomial that especially fits the needs of its domain. In this
 examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
@@ -367,11 +412,6 @@ examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
 
 
 \begin{itemize}
-  \item 
-    \begin{itemize}
-      \item Function toInnerN
-    \end{itemize}
-
   \item
     \begin{itemize}
       \item crc\_checksum\_8
