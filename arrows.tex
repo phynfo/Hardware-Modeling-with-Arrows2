@@ -410,7 +410,7 @@ are then fed into the shift register via the \hs{first (crc\_polynom)} expressio
 reason the arrow ends with the \hs{aFlip >>> polySkip >>> crc\_polynom} expression. 
 
 
-\par 
+\subsection{Simple Example}
 There are lots of CRC-Codes out there and every one is equipped with a polynomial that especially fits the needs of its domain. In this
 examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
 \begin{align*}
@@ -456,24 +456,92 @@ crc_checksum_ccit_8
       (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
 \end{haskell} 
 
+\subsection{Building Netlists}
+The data type of the previous CRC function denotes a \hs{Graph} arrow. This is because the arrow generates a graph which in fact holds all
+the information that are needed to generate netlists out of it. Basically a graph could be seen as a different form of a Netlist. In Haskell
+a graph is modeled by two lists, one for the nodes and one for the edges.
 
+\par
+Every hardware component is identified by an ID that is represented by an integer value. This holds also for the in and output pins of
+hardware components. The Pins also have IDs that are identified by an integer value.
+\begin{haskell}
+type CompID = Int
+type PinID  = Int
+type Pins   = [PinID]
+\end{haskell}
 
-Generating Netlists,\ldots
+\par
+An edge represents a wire between two pins on different components and is identified by the tuple of \hs{CompID} and \hs{PinID} which is
+called an \hs{AnchorPoint}. There are also two different anchor points, one that goes into a component called \hs{SinkAnchor} as well as one
+that comes from a component, the \hs{SourceAnchor}. 
 
-\subsection{Simple Example}
+\begin{haskell}
+type AnchorPoint  = (Maybe CompID, PinID)
+type SinkAnchor   = AnchorPoint
+type SourceAnchor = AnchorPoint
+\end{haskell}
 
-\subsection{CRC}
+Note that the \hs{Maybe} constructor is used here, because there can be edges / wires from and to nowhere. These represent the edges of a
+component which are not yet connected to the outside world. This by the way maps also to the real world, where it is normal, that
+components which are not yet placed have pins from and to nowhere. 
+
+\par
+An edge is a wire, is a connection between two components or to be more precise, it is a connection between two anchor points. 
+\begin{haskell}
+data Edge 
+  = MkEdge { sourceInfo :: SourceAnchor
+           , sinkInfo   :: SinkAnchor }
+\end{haskell}
+The record notation is used, to obtain accessor functions (\hs{sourceInfo} and \hs{sinkInfo}) within one step. 
+
+\par 
+Last but not least the actual graph is defined. It holds the information about the node which is similar to the component. The name is later
+used in the VHDL generation to identify the entities. Every node holds a list of sub nodes that represent from what this node is build and
+helps to build up complex structures from basic simple building blocks. It also holds a list of the connected edges, as well as the list of
+input- and output pins. Accessor function are also gained through the use of the record notation.
+\begin{haskell}
+data StructGraph
+  = MkSG { name    :: String
+         , compID  :: CompID
+         , nodes   :: [StructGraph]
+         , edges   :: [Edge]
+         , sinks   :: Pins
+         , sources :: Pins }   
+\end{haskell}
 
 \subsection{Problems with this approach}
+This approach comes with various problems. 
 
-\begin{itemize}
-\item Problems with nested tupels. Re-Tupeling is not very handy.
-\item Tupels are not an appropriate model for hardware wires. (e.g.\ input for a 3-ary AND: is it (x,(y,z)) or ((x,y),z)) 
-\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
-\end{itemize}
+As the CRC example showed, all the input data to these hardware components must fit into simple tuples. This is easy to handle if the
+components only come with one or two pins and certainly that is the case for simple boolean logic gates. But at the latest if the modeled
+hardware component uses more than two pins, different data structures are needed. Up to a certain amount one can simulate something similar
+to lists with only tuples as is done in the CRC examples. But the simulation comes at a cost. There is a lot of restructuring the tuples in
+the code going on and the CRC example only is a $8$ bit example. This process becomes more tedious, confusing and error prone, if something
+like 32 bit hardware components should be modeled. And in fact hardware components with more than two in or output pins is more or less the
+default case; two or less in or output pins are the exception.
 
-The tupel-problem could be avoided (at least superficially) with the use of Patterson's proc-Notation. The proc-Notation
-abstracts the tupels \ldots 
+\par
+The tedious tuple code could at least be superficially avoided by the use of Patterson's proc-notation for arrows.
+\cite{PatersonNewNotation} The proc-Notation abstracts the tuples in that way, that the hardware is described more ``visually'' in the
+source code. Underneath there are still tuples in use but the developer must not be aware of them because they are automatically generated.
+Here is a short example, the CCIT CRC polynomial would not only be less tedious, look much more understandable described in proc-notation. 
+\begin{haskell}
+crc_polynom_ccit 
+ = proc (b4, (b3, (b2, (b1, b0)))) -> do
+     b4' <- aId  -< (b3)
+     b3' <- aId  -< (b2)
+     b2' <- aXor -< (b4, b1)
+     b1' <- aXor -< (b4, b0)
+     returnA     -< (b4', (b3', (b2', b1')))
+\end{haskell} 
+
+\par
+But there is also a problem with that notation which comes from the auto generated arrow code. Patterson's notation makes a lot use of the
+\hs{arr} function of an arrow. But because it is possible to ``lift'' any function passed to \hs{arr} into an arrow, it is impossible to
+keep track of the types of that functions. Nevertheless at least the type of the passed function is needed to generate a nice \hs{Grid}
+arrow, that can be transformed into Netlists later. 
+
+% TODO Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
 
 
 \section{Coping with the Tupel-Problem -- "`Vector-Arrows"'}
@@ -499,7 +567,7 @@ in all it seems that the Vec-Type together with the Arrows-Instances is too much
 
 \subsection{Using a dependently types language}
 
-\section{Coping with \hs{arr}-Problem}
+\section{Copeing with \hs{arr}-Problem}
 
 \subsection{ForSyDe: Using the AST of the arr argument}
 
