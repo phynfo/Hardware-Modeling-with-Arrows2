@@ -4,6 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{color}
 \usepackage{graphicx}
+\usepackage{subfigure}
 \usepackage{listings}
 \usepackage{MnSymbol}
 \usepackage{amsmath} % flush eqations to the left
@@ -344,6 +345,17 @@ structures are used and are processed from the left to the right. This is exactl
 
 
 \par
+While working with tuple lists, it is often convenient to just reorder the parenthesis around the data so that the selector functions like
+\hs{first} result in just the right behavior. Two arrows are mentioned here that exploit the associativity of arrows, namely \hs{a\_aBC2ABc}
+and \hs{a\_ABc2aBC}. The somewhat cryptographic names only mirror the changing parenthesis, upper case letters show the two positions that
+are enclosed by the brackets, the lower case letter is the isolated position. 
+\begin{align*}
+  \text{a\_aBC2ABc} &: (a, (b, c)) \rightarrow ((a, b), c) \\
+  \text{a\_ABc2aBC} &: ((a, b), c) \rightarrow (a, (b, c))
+\end{align*}
+
+
+\par
 The \hs{toInner} function makes use of the previously defined operators. There are several \hs{toInner} functions, that only differ in the
 amount of steps the value is pushed into the list like tuple.
 \begin{haskell}
@@ -357,9 +369,7 @@ toInner5
 
 
 \par
-With \hs{crc\_checksum\_8} a higher order function is defined that abstracts the general principle behind an 8 bit CRC sum function. The
-developer only has to supply \hs{crc\_checksum\_8} with a CRC polynomial, with a polynomial skip function, with a padding value, and a start
-and a rest value. 
+With \hs{crc\_checksum\_8} a higher order function is defined that abstracts the general principle behind an 8 bit CRC sum function.  
 \begin{haskell}
 crc_checksum_8 crc_polynom polySkip padding start rest
   =   (padding &&& aId)
@@ -387,18 +397,17 @@ crc_checksum_8 crc_polynom polySkip padding start rest
                  )   
 \end{haskell} 
 
-So this arrow actually abstracts the steps to be done to calculate a 8 bit CRC sum. With the first action the padding bits are perpended in
-front of the value bits and are than moved 8 bits into the tuple list. This is followed by two actions, namely \hs{start} and \hs{rest}.
-Keep in mind that the \hs{&&&} operator first duplicates its input and passes each arrow one copy. \hs{start} returns the $n$th value out
-of the tuple list and \hs{rest} skips all $n$ values. The results of \hs{start} is than fed into the first crc calculating function:
-\hs{crc\_polynom}. This is followed by exactly the amount of steps such that including starting and ending calculations, all bits are taken
-into account. In an $8$ bit CRC sum function these are $6$ steps. 
+Before starting to calculate the CRC, the input data need to be properly aligned. Therefore the padding bits, which are all $0$ for the
+calculation of the CRC, are ``moved'' to right end of the tuple list which for any 8 bit wide CRC algorithm is done via the \hs{toInner8}.
+\[((p_0, p_1), (b_0, (b_1, (b_2, (b_3, b_4))))) \rightarrow (b_0, (b_1, (b_2, (b_3, (b_4, (p_0, p_1))))))\]
 
 \par
-Each step itself makes use of the associativity of arrows, so it moves brackets via the \hs{a_aBC2ABc} arrow which transforms a \((a, (b,
-c))\) structure into a \(((a, b), c)\) structure. On the first element of that tuple is than a flip command performed, followed by the
-appropriate \hs{polySkip} arrow. \hs{polySkip} itself is just a CRC specific \hs{toInner} arrow. Last but not least the actual
-\hs{crc\_polynom} is performed.
+Afterwards the arrow actually abstracts the steps to be done to calculate a 8 bit CRC sum. The combined action \hs{(start &&& rest)} splits
+the input data stream into the just enough bits that fill the Galois type shift register (the \hs{start} part) and into the remaining bits
+(the \hs{rest} part). Keep in mind that the \hs{&&&} operator first duplicates its input and passes each arrow one copy. The starting bits
+are then fed into the shift register via the \hs{first (crc\_polynom)} expression. Step by step all the bits are consumed, $1$ bit for every
+\hs{step}. The last step is executed without the need of the \hs{first} selector, because there are no reminding bits left and for that
+reason the arrow ends with the \hs{aFlip >>> polySkip >>> crc\_polynom} expression. 
 
 
 \par 
@@ -409,202 +418,44 @@ examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
   \text{CCIT}&: x^4 + x   + 1 
 \end{align*}
 
-So the question is, what \hs{polySkip}, \hs{crc\_polynom}, \hs{padding}, \hs{start} and \hs{rest} values need to be chosen.
+These polynomials describe at which positions the input bit is \hs{xor}'ed with that bit that has traveled all the way through the shift
+register. For the USB CRC $\text{bit}_0$ and $\text{bit}_2$ are \hs{xor}'ed with $\text{bit}_5$, for the CCIT CRC the $\text{bit}_0$ and
+$\text{bit}_1$ are \hs{xor}'ed with $\text{bit}_4$. 
+
+\begin{figure}
+  \centering
+  \graphicspath{{./}{Images/}}
+  \mbox{%
+    \subfigure[USB CRC]{\scalebox{0.5}{\input{./Images/CRC-USB}}} \quad \quad \quad \quad
+    \subfigure[CCIT CRC]{\scalebox{0.5}{\input{./Images/CRC-CCIT}}}
+  }
+\end{figure}
 
 
+\par
+The question is, what \hs{polySkip}, \hs{crc\_polynom}, \hs{padding}, \hs{start} and \hs{rest} values need to be chosen. To summarize this
+for the CCIT CRC, the highest exponent is $4$. This means, that:
+\begin{itemize}
+  \item the \hs{polySkip} needs to be \hs{toInner4}
+  \item there are $4$ \hs{padding} bits \hs{aConst (False, (False, (False, False)))} 
+  \item the split between \hs{start} and \hs{rest} is after bit $4$
+\end{itemize}
 
+So the resulting definition of the CCIT CRC sum is:
+\begin{haskell}
+crc_checksum_ccit_8 
+  :: Arrow a => Grid a 
+    (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) 
+    (Bool, (Bool, (Bool, Bool)))
+crc_checksum_ccit_8
+  = crc_checksum_8   
+      crc_polynom_ccit
+      toInner4
+      (aConst (False, (False, (False, False))))
+      (second.second.second.second $ aFst)
+      (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
+\end{haskell} 
 
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%
-%{-# LANGUAGE Arrows,
-%             NoMonomorphismRestriction,
-%             RebindableSyntax #-}
-%module CRC 
-%where
-%
-%import Prelude
-%
-%import Control.Category ((>>>))
-%
-%import Circuit
-%import Circuit.Arrow
-%import Circuit.Defaults
-%
-%infixr 0 >:>
-%
-%(>:>) aA aB = aA >>> (second aB)
-%
-%mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
-%mvRight
-%    =   aDistr
-%    >>> first aSnd
-%
-%
-%
-%crc_polynom_ccit ::  Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, Bool))))  (Bool, (Bool, (Bool, Bool)))
-%crc_polynom_ccit 
-%    =   mvRight >:> mvRight >:>
-%        (   aDistr 
-%        >>> (aXor *** aXor)
-%        )
-%
-%-- crc_polynom_ccit 
-%--  = proc (x4, (x3, (x2, (x1, x0)))) -> do
-%--      o1 <- aXor -< (x4, x0)
-%--      o2 <- aXor -< (x4, x1)
-%--      o3 <- aId  -< (x2)
-%--      o4 <- aId  -< (x3)
-%--      returnA    -< (o4, (o3, (o2, o1)))
-%
-%crc_polynom_usb ::   Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, Bool)))))  (Bool, (Bool, (Bool, (Bool, Bool))))
-%crc_polynom_usb
-%    =   mvRight >:> mvRight >:>
-%        (   aDistr
-%        >>> aXor *** (mvRight >:> aXor)
-%        )
-%
-%-- crc_polynom_usb
-%--  = proc (x5, (x4, (x3, (x2, (x1, x0))))) -> do
-%--      o1 <- aXor -< (x5, x0)
-%--      o2 <- aId  -< (x1)
-%--      o3 <- aXor -< (x5, x2)
-%--      o4 <- aId  -< (x3)
-%--      o5 <- aId  -< (x4)
-%--      returnA    -< (o5, (o4, (o3, (o2, o1))))
-%
-%crc_polynom_sdmmc :: Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool)))))))  (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))
-%crc_polynom_sdmmc
-%    =   mvRight >:> mvRight >:> mvRight >:>
-%        (   aDistr
-%        >>> aXor *** (mvRight >:> mvRight >:> aXor)
-%        )
-%
-%-- crc_polynom_sdmmc
-%--  = proc (x7, (x6, (x5, (x4, (x3, (x2, (x1, x0))))))) -> do
-%--      o1 <- aXor -< (x7, x0)
-%--      o2 <- aId  -< (x1)
-%--      o3 <- aId  -< (x2)
-%--      o4 <- aXor -< (x7, x3)
-%--      o5 <- aId  -< (x4)
-%--      o6 <- aId  -< (x5)
-%--      o7 <- aId  -< (x6)
-%--      returnA    -< (o7, (o6, (o5, (o4, (o3, (o2, o1))))
-%
-%    
-%
-%--                                    3      2      1     0         2      1     0
-%inner_crc_3ord :: Arrow a => Grid a (Bool, (Bool, (Bool, Bool)))  (Bool, (Bool, Bool))
-%inner_crc_3ord 
-%    =   aDistr
-%    >>> aSnd *** aDistr
-%    >>> second (aXor *** aXor)
-%
-%
-%toInner3
-%    =   mvRight 
-%    >:> mvRight 
-%    >:> aFlip
-%
-%toInner4
-%    =   mvRight
-%    >:> mvRight 
-%    >:> mvRight 
-%    >:> aFlip
-%
-%toInner5
-%    =   mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> aFlip
-%
-%toInner7
-%    =   mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> aFlip
-%
-%toInner8
-%    =   mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> aFlip
-%
-%
-%-- crc_checksum_8 crc_polynom polySkip padding start rest
-%--     = proc 
-%crc_checksum_8 crc_polynom polySkip padding start rest
-%    =   (padding &&& aId)
-%    >>> toInner8
-%
-%    >>> (start &&& rest)
-%    >>> first (crc_polynom)
-%
-%    >>> step
-%    >>> step
-%    >>> step
-%    >>> step
-%    >>> step
-%    >>> step
-%
-%    >>> aFlip
-%    >>> polySkip
-%    >>> crc_polynom
-%
-%    where step =   a_aBC2ABc
-%               >>> first 
-%                   (   aFlip
-%                   >>> polySkip
-%                   >>> crc_polynom
-%                   )
-%
-%
-%crc_test
-%    = crc_checksum_8 
-%        inner_crc_3ord
-%        toInner3
-%        (aConst (False, (False, False)))
-%        (second (second (second aFst)))
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%crc_checksum_ccit_8 ::  Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, Bool)))
-%crc_checksum_ccit_8
-%    = crc_checksum_8   
-%        crc_polynom_ccit
-%        toInner4
-%        (aConst (False, (False, (False, False))))
-%        (second.second.second.second $ aFst)
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%crc_checksum_usb_8 ::   Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, (Bool, Bool))))
-%crc_checksum_usb_8 
-%    = crc_checksum_8 
-%        crc_polynom_usb 
-%        toInner5 
-%        (aConst (False, (False, (False, (False, False)))))
-%        (second.second.second.second.second $ aFst)
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%crc_checksum_sdmmc_8 :: Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))
-%crc_checksum_sdmmc_8
-%    = crc_checksum_8 
-%        crc_polynom_sdmmc
-%        toInner7
-%        (aConst (False, (False, (False, (False, (False, (False, False)))))))
-%        (second.second.second.second.second.second.second $ aFst)
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%%%%%%%%%%%%%%%%%%%%
 
 
 Generating Netlists,\ldots
