@@ -4,11 +4,12 @@
 \usepackage[T1]{fontenc}
 \usepackage{color}
 \usepackage{graphicx}
+\usepackage{subfigure}
 \usepackage{listings}
 \usepackage{MnSymbol}
-\usepackage[fleqn]{amsmath} % flush eqations to the left
-\usepackage{amssymb}
-\usepackage{mathtools}
+\usepackage{amsmath} % flush eqations to the left
+%\usepackage{amssymb}
+%\usepackage{mathtools}
 
 %\input{haskellstyle}
 
@@ -203,12 +204,12 @@ earlier, arrows provide handles to different building blocks of functional funct
 isn't possible and therefor is not used to model hardware. %% TODO : Kommt der unterschied zur vermeidung functionaler features hier raus?
 
 \begin{itemize}
-\item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
-\item Arrows resemble premonoidal effect categories and\ldots   are a common way for category theorists to model the
-semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
-semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
-Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
-\item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
+  \item Arrows compromise deep and shallow embedding, and seem to pick the benfits of both.a
+  \item Arrows resemble premonoidal effect categories and\ldots   are a common way for category theorists to model the
+  semantics of programming languages in a maximal generic way. In this view, arrows are executable maximum generic
+  semantic specifications. With this genericity, one can hope to be able to do many things with such a specification:
+  Execution, Synthesis, Proofing, (dependend on the concrete instance of the arrow)
+  \item Interface (i.\,e. \hs{***}, \hs{&&&}, \hs{>>>}) is natural for combining hardware blocks
 \end{itemize}
 
 \par
@@ -290,6 +291,14 @@ This one is essential for hardware development because there are considerable fe
 \xfig[.8]{ArrowLp}{Schematic representation of loop}{figure:loop}
 
 
+% TODO 
+
+\begin{itemize}
+  \item arrows sind getupelt
+\end{itemize}
+
+
+
 \section{First Approach: Classical Arrows}
 Within this section, we present a basic cycle redundancy check implementation with the design method of arrows. The example shows a typical
 way to express hardware with the functional method and also the flexibility of a functional approach is demonstrated. This is done by
@@ -302,7 +311,11 @@ The calculation of a specific CRC to some input data is based upon a mathematica
 devision is the CRC Checksum. The original data padded by the CRC results in 0 if that devision is done again. 
 
 \par
-First of all a few operators are shown, that help to build the hardware later. There is the function \hs{mvRight} 
+First of all there are operators, that are essential to work with this classical arrows, because of their tuple like inner structure. This
+means, that each circuit is processing only a few inputs to output. The inputs therefore need to be reordered previous to each function
+call. One function, that is responsible for this tupel'ing process is \hs{mvRight}. This function takes an argument of the structure
+\((x,(y,z))\) to a different structure \((y,(x,z))\). 
+
 \begin{haskell}
 mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
 mvRight 
@@ -310,8 +323,94 @@ mvRight
   >>> first aSnd
 \end{haskell} 
 
+The first arrow that is invoked here is \hs{aDistr} which is the pendant of the distribution law. \hs{aDistr} takes something of structure
+\(x, (y, z)\) into something of structure \((x, y), (x, z))\), it distributes the first element over the second one. That arrow is combined
+with another one, namely \hs{first aSnd}. In fact, this really is an arrow \hs{aSnd} with a scoop-operator \hs{first} such that \hs{aSnd}
+works only on the first element of the tuple. The resulting arrow takes a structure \(((x_1,x_2), (y_1,y_2))\) to a resulting structure
+\((x_2, (y_1, y_2))\). In the end the \hs{mvRight} arrow moves the first element of the tuple one step to the right. Of curse this function
+assumes a structure where always the first element of a tuple is a value, the second is another tuple such like: \((v_1, (v_2, (v_3, (v_4,
+v_5, (\dots)))))\)
 
-\par 
+
+\par
+Another common task over these list like tuple structure is to apply one arrow to the front and than concentrate with the remaining arrows
+on the remaining structure. For this purpose the operator \hs{>:>} helps to clarify the 
+\begin{haskell}
+  aA >:> aB = aA >>> (second aB)
+\end{haskell} 
+
+The operator \hs{>:>} is based on the \hs{>>>} operator with a minor difference. The first supplied arrow is executed over the whole input
+data tuple, while the second arrow is only applied to the second part of that tuple. Such an operator comes handy while list like tuple
+structures are used and are processed from the left to the right. This is exactly the case for the polynomial division. 
+
+
+\par
+While working with tuple lists, it is often convenient to just reorder the parenthesis around the data so that the selector functions like
+\hs{first} result in just the right behavior. Two arrows are mentioned here that exploit the associativity of arrows, namely \hs{a\_aBC2ABc}
+and \hs{a\_ABc2aBC}. The somewhat cryptographic names only mirror the changing parenthesis, upper case letters show the two positions that
+are enclosed by the brackets, the lower case letter is the isolated position. 
+\begin{align*}
+  \text{a\_aBC2ABc} &: (a, (b, c)) \rightarrow ((a, b), c) \\
+  \text{a\_ABc2aBC} &: ((a, b), c) \rightarrow (a, (b, c))
+\end{align*}
+
+
+\par
+The \hs{toInner} function makes use of the previously defined operators. There are several \hs{toInner} functions, that only differ in the
+amount of steps the value is pushed into the list like tuple.
+\begin{haskell}
+toInner5
+  =   mvRight
+  >:> mvRight
+  >:> mvRight
+  >:> mvRight
+  >:> aFlip
+\end{haskell} 
+
+
+\par
+With \hs{crc\_checksum\_8} a higher order function is defined that abstracts the general principle behind an 8 bit CRC sum function.  
+\begin{haskell}
+crc_checksum_8 crc_polynom polySkip padding start rest
+  =   (padding &&& aId)
+  >>> toInner8
+
+  >>> (start &&& rest)
+  >>> first (crc_polynom)
+
+  >>> step
+  >>> step
+  >>> step
+  >>> step
+  >>> step
+  >>> step
+
+  >>> aFlip
+  >>> polySkip
+  >>> crc_polynom
+
+  where step =   a_aBC2ABc
+             >>> first 
+                 (   aFlip
+                 >>> polySkip
+                 >>> crc_polynom
+                 )   
+\end{haskell} 
+
+Before starting to calculate the CRC, the input data need to be properly aligned. Therefore the padding bits, which are all $0$ for the
+calculation of the CRC, are ``moved'' to right end of the tuple list which for any 8 bit wide CRC algorithm is done via the \hs{toInner8}.
+\[((p_0, p_1), (b_0, (b_1, (b_2, (b_3, b_4))))) \rightarrow (b_0, (b_1, (b_2, (b_3, (b_4, (p_0, p_1))))))\]
+
+\par
+Afterwards the arrow actually abstracts the steps to be done to calculate a 8 bit CRC sum. The combined action \hs{(start &&& rest)} splits
+the input data stream into the just enough bits that fill the Galois type shift register (the \hs{start} part) and into the remaining bits
+(the \hs{rest} part). Keep in mind that the \hs{&&&} operator first duplicates its input and passes each arrow one copy. The starting bits
+are then fed into the shift register via the \hs{first (crc\_polynom)} expression. Step by step all the bits are consumed, $1$ bit for every
+\hs{step}. The last step is executed without the need of the \hs{first} selector, because there are no reminding bits left and for that
+reason the arrow ends with the \hs{aFlip >>> polySkip >>> crc\_polynom} expression. 
+
+
+\subsection{Simple Example}
 There are lots of CRC-Codes out there and every one is equipped with a polynomial that especially fits the needs of its domain. In this
 examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
 \begin{align*}
@@ -319,240 +418,130 @@ examples the simple CRC-Codes for USB and CCIT are shown. Their polynomials are:
   \text{CCIT}&: x^4 + x   + 1 
 \end{align*}
 
+These polynomials describe at which positions the input bit is \hs{xor}'ed with that bit that has traveled all the way through the shift
+register. For the USB CRC $\text{bit}_0$ and $\text{bit}_2$ are \hs{xor}'ed with $\text{bit}_5$, for the CCIT CRC the $\text{bit}_0$ and
+$\text{bit}_1$ are \hs{xor}'ed with $\text{bit}_4$. 
+
+\begin{figure}
+  \centering
+  \graphicspath{{./}{Images/}}
+  \mbox{%
+    \subfigure[USB CRC]{\scalebox{0.5}{\input{./Images/CRC-USB}}} \quad \quad \quad \quad
+    \subfigure[CCIT CRC]{\scalebox{0.5}{\input{./Images/CRC-CCIT}}}
+  }
+\end{figure}
 
 
+\par
+The question is, what \hs{polySkip}, \hs{crc\_polynom}, \hs{padding}, \hs{start} and \hs{rest} values need to be chosen. To summarize this
+for the CCIT CRC, the highest exponent is $4$. This means, that:
 \begin{itemize}
-  \item 
-    \begin{itemize}
-      \item USB  - Polynom
-      \item CCIT - Polynom
-    \end{itemize}
-
-  \item 
-    \begin{itemize}
-      \item Operator >:>
-      \item Function mvRight
-      \item Function toInnerN
-    \end{itemize}
-
-  \item
-    \begin{itemize}
-      \item crc\_checksum\_8
-      \item crc\_checksum\_usb\_8
-      \item crc\_checksum\_ccit\_8
-    \end{itemize}
-    
+  \item the \hs{polySkip} needs to be \hs{toInner4}
+  \item there are $4$ \hs{padding} bits \hs{aConst (False, (False, (False, False)))} 
+  \item the split between \hs{start} and \hs{rest} is after bit $4$
 \end{itemize}
 
+So the resulting definition of the CCIT CRC sum is:
+\begin{haskell}
+crc_checksum_ccit_8 
+  :: Arrow a => Grid a 
+    (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) 
+    (Bool, (Bool, (Bool, Bool)))
+crc_checksum_ccit_8
+  = crc_checksum_8   
+      crc_polynom_ccit
+      toInner4
+      (aConst (False, (False, (False, False))))
+      (second.second.second.second $ aFst)
+      (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
+\end{haskell} 
 
+\subsection{Building Netlists}
+The data type of the previous CRC function denotes a \hs{Graph} arrow. This is because the arrow generates a graph which in fact holds all
+the information that are needed to generate netlists out of it. Basically a graph could be seen as a different form of a Netlist. In Haskell
+a graph is modeled by two lists, one for the nodes and one for the edges.
 
+\par
+Every hardware component is identified by an ID that is represented by an integer value. This holds also for the in and output pins of
+hardware components. The Pins also have IDs that are identified by an integer value.
+\begin{haskell}
+type CompID = Int
+type PinID  = Int
+type Pins   = [PinID]
+\end{haskell}
 
+\par
+An edge represents a wire between two pins on different components and is identified by the tuple of \hs{CompID} and \hs{PinID} which is
+called an \hs{AnchorPoint}. There are also two different anchor points, one that goes into a component called \hs{SinkAnchor} as well as one
+that comes from a component, the \hs{SourceAnchor}. 
 
-%%%%%%%%%%%%%%%%%%%%
-%{-# LANGUAGE Arrows,
-%             NoMonomorphismRestriction,
-%             RebindableSyntax #-}
-%module CRC 
-%where
-%
-%import Prelude
-%
-%import Control.Category ((>>>))
-%
-%import Circuit
-%import Circuit.Arrow
-%import Circuit.Defaults
-%
-%infixr 0 >:>
-%
-%(>:>) aA aB = aA >>> (second aB)
-%
-%mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
-%mvRight
-%    =   aDistr
-%    >>> first aSnd
-%
-%
-%
-%crc_polynom_ccit ::  Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, Bool))))  (Bool, (Bool, (Bool, Bool)))
-%crc_polynom_ccit 
-%    =   mvRight >:> mvRight >:>
-%        (   aDistr 
-%        >>> (aXor *** aXor)
-%        )
-%
-%-- crc_polynom_ccit 
-%--  = proc (x4, (x3, (x2, (x1, x0)))) -> do
-%--      o1 <- aXor -< (x4, x0)
-%--      o2 <- aXor -< (x4, x1)
-%--      o3 <- aId  -< (x2)
-%--      o4 <- aId  -< (x3)
-%--      returnA    -< (o4, (o3, (o2, o1)))
-%
-%crc_polynom_usb ::   Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, Bool)))))  (Bool, (Bool, (Bool, (Bool, Bool))))
-%crc_polynom_usb
-%    =   mvRight >:> mvRight >:>
-%        (   aDistr
-%        >>> aXor *** (mvRight >:> aXor)
-%        )
-%
-%-- crc_polynom_usb
-%--  = proc (x5, (x4, (x3, (x2, (x1, x0))))) -> do
-%--      o1 <- aXor -< (x5, x0)
-%--      o2 <- aId  -< (x1)
-%--      o3 <- aXor -< (x5, x2)
-%--      o4 <- aId  -< (x3)
-%--      o5 <- aId  -< (x4)
-%--      returnA    -< (o5, (o4, (o3, (o2, o1))))
-%
-%crc_polynom_sdmmc :: Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool)))))))  (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))
-%crc_polynom_sdmmc
-%    =   mvRight >:> mvRight >:> mvRight >:>
-%        (   aDistr
-%        >>> aXor *** (mvRight >:> mvRight >:> aXor)
-%        )
-%
-%-- crc_polynom_sdmmc
-%--  = proc (x7, (x6, (x5, (x4, (x3, (x2, (x1, x0))))))) -> do
-%--      o1 <- aXor -< (x7, x0)
-%--      o2 <- aId  -< (x1)
-%--      o3 <- aId  -< (x2)
-%--      o4 <- aXor -< (x7, x3)
-%--      o5 <- aId  -< (x4)
-%--      o6 <- aId  -< (x5)
-%--      o7 <- aId  -< (x6)
-%--      returnA    -< (o7, (o6, (o5, (o4, (o3, (o2, o1))))
-%
-%    
-%
-%--                                    3      2      1     0         2      1     0
-%inner_crc_3ord :: Arrow a => Grid a (Bool, (Bool, (Bool, Bool)))  (Bool, (Bool, Bool))
-%inner_crc_3ord 
-%    =   aDistr
-%    >>> aSnd *** aDistr
-%    >>> second (aXor *** aXor)
-%
-%
-%toInner3
-%    =   mvRight 
-%    >:> mvRight 
-%    >:> aFlip
-%
-%toInner4
-%    =   mvRight
-%    >:> mvRight 
-%    >:> mvRight 
-%    >:> aFlip
-%
-%toInner5
-%    =   mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> aFlip
-%
-%toInner7
-%    =   mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> aFlip
-%
-%toInner8
-%    =   mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> mvRight
-%    >:> aFlip
-%
-%
-%-- crc_checksum_8 crc_polynom polySkip padding start rest
-%--     = proc 
-%crc_checksum_8 crc_polynom polySkip padding start rest
-%    =   (padding &&& aId)
-%    >>> toInner8
-%
-%    >>> (start &&& rest)
-%    >>> first (crc_polynom)
-%
-%    >>> step
-%    >>> step
-%    >>> step
-%    >>> step
-%    >>> step
-%    >>> step
-%
-%    >>> aFlip
-%    >>> polySkip
-%    >>> crc_polynom
-%
-%    where step =   a_aBC2ABc
-%               >>> first 
-%                   (   aFlip
-%                   >>> polySkip
-%                   >>> crc_polynom
-%                   )
-%
-%
-%crc_test
-%    = crc_checksum_8 
-%        inner_crc_3ord
-%        toInner3
-%        (aConst (False, (False, False)))
-%        (second (second (second aFst)))
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%crc_checksum_ccit_8 ::  Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, Bool)))
-%crc_checksum_ccit_8
-%    = crc_checksum_8   
-%        crc_polynom_ccit
-%        toInner4
-%        (aConst (False, (False, (False, False))))
-%        (second.second.second.second $ aFst)
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%crc_checksum_usb_8 ::   Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, (Bool, Bool))))
-%crc_checksum_usb_8 
-%    = crc_checksum_8 
-%        crc_polynom_usb 
-%        toInner5 
-%        (aConst (False, (False, (False, (False, False)))))
-%        (second.second.second.second.second $ aFst)
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%crc_checksum_sdmmc_8 :: Arrow a => Grid a (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))) (Bool, (Bool, (Bool, (Bool, (Bool, (Bool, Bool))))))
-%crc_checksum_sdmmc_8
-%    = crc_checksum_8 
-%        crc_polynom_sdmmc
-%        toInner7
-%        (aConst (False, (False, (False, (False, (False, (False, False)))))))
-%        (second.second.second.second.second.second.second $ aFst)
-%        (aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd >>> aSnd)
-%
-%%%%%%%%%%%%%%%%%%%%
+\begin{haskell}
+type AnchorPoint  = (Maybe CompID, PinID)
+type SinkAnchor   = AnchorPoint
+type SourceAnchor = AnchorPoint
+\end{haskell}
 
+Note that the \hs{Maybe} constructor is used here, because there can be edges / wires from and to nowhere. These represent the edges of a
+component which are not yet connected to the outside world. This by the way maps also to the real world, where it is normal, that
+components which are not yet placed have pins from and to nowhere. 
 
-Generating Netlists,\ldots
+\par
+An edge is a wire, is a connection between two components or to be more precise, it is a connection between two anchor points. 
+\begin{haskell}
+data Edge 
+  = MkEdge { sourceInfo :: SourceAnchor
+           , sinkInfo   :: SinkAnchor }
+\end{haskell}
+The record notation is used, to obtain accessor functions (\hs{sourceInfo} and \hs{sinkInfo}) within one step. 
 
-\subsection{Simple Example}
-
-\subsection{CRC}
+\par 
+Last but not least the actual graph is defined. It holds the information about the node which is similar to the component. The name is later
+used in the VHDL generation to identify the entities. Every node holds a list of sub nodes that represent from what this node is build and
+helps to build up complex structures from basic simple building blocks. It also holds a list of the connected edges, as well as the list of
+input- and output pins. Accessor function are also gained through the use of the record notation.
+\begin{haskell}
+data StructGraph
+  = MkSG { name    :: String
+         , compID  :: CompID
+         , nodes   :: [StructGraph]
+         , edges   :: [Edge]
+         , sinks   :: Pins
+         , sources :: Pins }   
+\end{haskell}
 
 \subsection{Problems with this approach}
+This approach comes with various problems. 
 
-\begin{itemize}
-\item Problems with nested tupels. Re-Tupeling is not very handy.
-\item Tupels are not an appropriate model for hardware wires. (e.g.\ input for a 3-ary AND: is it (x,(y,z)) or ((x,y),z)) 
-\item Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
-\end{itemize}
+As the CRC example showed, all the input data to these hardware components must fit into simple tuples. This is easy to handle if the
+components only come with one or two pins and certainly that is the case for simple boolean logic gates. But at the latest if the modeled
+hardware component uses more than two pins, different data structures are needed. Up to a certain amount one can simulate something similar
+to lists with only tuples as is done in the CRC examples. But the simulation comes at a cost. There is a lot of restructuring the tuples in
+the code going on and the CRC example only is a $8$ bit example. This process becomes more tedious, confusing and error prone, if something
+like 32 bit hardware components should be modeled. And in fact hardware components with more than two in or output pins is more or less the
+default case; two or less in or output pins are the exception.
 
-The tupel-problem could be avoided (at least superficially) with the use of Patterson's proc-Notation. The proc-Notation
-abstracts the tupels \ldots 
+\par
+The tedious tuple code could at least be superficially avoided by the use of Patterson's proc-notation for arrows.
+\cite{PatersonNewNotation} The proc-Notation abstracts the tuples in that way, that the hardware is described more ``visually'' in the
+source code. Underneath there are still tuples in use but the developer must not be aware of them because they are automatically generated.
+Here is a short example, the CCIT CRC polynomial would not only be less tedious, look much more understandable described in proc-notation. 
+\begin{haskell}
+crc_polynom_ccit 
+ = proc (b4, (b3, (b2, (b1, b0)))) -> do
+     b4' <- aId  -< (b3)
+     b3' <- aId  -< (b2)
+     b2' <- aXor -< (b4, b1)
+     b1' <- aXor -< (b4, b0)
+     returnA     -< (b4', (b3', (b2', b1')))
+\end{haskell} 
+
+\par
+But there is also a problem with that notation which comes from the auto generated arrow code. Patterson's notation makes a lot use of the
+\hs{arr} function of an arrow. But because it is possible to ``lift'' any function passed to \hs{arr} into an arrow, it is impossible to
+keep track of the types of that functions. Nevertheless at least the type of the passed function is needed to generate a nice \hs{Grid}
+arrow, that can be transformed into Netlists later. 
+
+% TODO Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
 
 
 \section{Coping with the Tupel-Problem -- "`Vector-Arrows"'}
@@ -578,7 +567,7 @@ in all it seems that the Vec-Type together with the Arrows-Instances is too much
 
 \subsection{Using a dependently types language}
 
-\section{Coping with \hs{arr}-Problem}
+\section{Copeing with \hs{arr}-Problem}
 
 \subsection{ForSyDe: Using the AST of the arr argument}
 
