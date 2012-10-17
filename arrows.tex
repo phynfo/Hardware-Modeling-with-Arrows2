@@ -233,6 +233,7 @@ type class is called \hs{Arrow}.
 class Arrow a b c where 
   arr   :: (b -> c) -> a b c
   (>>>)  :: a b c    -> a c d   -> a b d
+  first :: a b c    -> a (b, d) (c, d) 
   (***) :: a b c    -> a b' c' -> a (b, b') (c, c')
   (&&&) :: a b c    -> a b  c' -> a  b      (c, c')
 \end{haskell}
@@ -536,24 +537,49 @@ crc_polynom_ccit
 \end{haskell} 
 
 \par
-But there is also a problem with that notation which comes from the auto generated arrow code. Patterson's notation makes a lot use of the
-\hs{arr} function of an arrow. But because it is possible to ``lift'' any function passed to \hs{arr} into an arrow, it is impossible to
-keep track of the types of that functions. Nevertheless at least the type of the passed function is needed to generate a nice \hs{Grid}
-arrow, that can be transformed into Netlists later. 
+But there is also a problem with the notation that comes from the auto generated arrow code. Patterson's notation makes a lot use of the
+\hs{arr} function of an arrow. But because it is possible to ``lift'' any function that is passed to \hs{arr} into an arrow, it is
+impossible to keep track of the types of that functions. Nevertheless the type of the passed function is needed to generate a \hs{Grid}
+arrow, that can be transformed into Netlists later. That is, because there is a direct correspondence between the data type of a function
+and their hardware representation (e.g.\ number of in- output pins).
 
-% TODO Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
 
 
-\section{Coping with the Tupel-Problem -- "`Vector-Arrows"'}
+\section{Coping with the Tupel-Problem - ``Vector-Arrows''}
+So classical arrows are an adequate abstract form to describe hardware, they are modular and the come with a enhanced type system that
+helps to reduce errors. The problem with them is the way the model hardware on a crucial point, namely the in- and output paths to each
+component. 
 
+\par
+As stated earlier, hardware components come most of the time with $>2$ in- output pins. Also the signal types that are transported via the
+interconnections between hardware is pretty limited. Most of the time there are only boolean values transmitted. Integer values are
+transmitted by bundling multiple boolean ones. Sensor developers tend to digitize pretty early in their design. \cite{MakinwaSmatSensors}
+
+\par
+These properties describe hardware as something, that is static in their type of values that are exchanged and is also dynamic in their
+amount of values that are exchanged. Arrows on the other hand are dynamic in the type of values that could be exchanged but are static in
+their amount of single in- outputs. 
+
+\par
+The question is, can one describe a different kind of arrows, that match hardware at that point more naturally, without loosing the other
+beneficial properties for hardware design. 
+
+\par
+The obvious solution is to replace the product\footnote{the tuple} in the arrow structure with a vector. Vectors are - like hardware -
+static in their data type and are dynamic in their value count. To outline the idea the following pseudo code example sketches a vector
+arrow type class in a Haskell syntax.
 \begin{haskell}
 class VArrow a where
-  arr    :: (Vec n b -> Vec m b) -> a (Vec n b) (Vec m b)
-  (>>V)  :: a (Vec n b) -> 
-  firsts :: 
-  (&&&)  :: 
-  (***)  :: 
+  arrV   :: (Vec j b ->  Vec k b) -> a (Vec j b) (Vec k b)
+  (>V>)  :: a (Vec k b) (Vec l b) -> a (Vec j b) (Vec k b) -> a (Vec j b) (Vec l b)
+  firsts :: a (Vec j b) (Vec k b) -> a (Vec l b) (Vec m b)
+  (&V&)  :: a (Vec j b) (Vec k b) -> a (Vec j b) (Vec l b) -> a (Vec j b) (Vec m b)
+  (*V*)  :: a (Vec j b) (Vec k b) -> a (Vec l b) (Vec m b) -> a (Vec n b) (Vec o b)
 \end{haskell}
+
+This is in no means 
+
+\subsection{Vector-Arrows are not Arrows}
 
 \subsection{Horn-Clause-Solution}
 
