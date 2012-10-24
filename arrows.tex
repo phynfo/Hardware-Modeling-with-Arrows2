@@ -191,17 +191,17 @@ implementations \cite{cryptol:fpga}. Cryptol has lately been adopted by an Ameri
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Why Arrows?}
-In this section we give a short introduction to the concept of arrows; we compare them very brief to monads which are better known in the
-functional community. We the show why arrows are a good way to describe hardware. 
+In this section we give a short introduction to the concept of arrows; we briefly compare them to monads which are better known in the
+functional community. We the show why to use arrows model hardware. 
 
-\subsection{What are arrows}
+\subsection{What is an Arrow?}
+
 The concept of a function is a pillar in functional programming and can't be compared to functions in imperative/procedural programming
 languages. In languages of the latter kind, functions are seen as structuring elements that stuff imperative expressions together while also
-make them available by a specific identifier, the function name. A function in the functional sense is oriented along the mathematical
-definition of a function which is defined as the projection of input parameters to output values. If taken serious, this definition leads
-to only deterministic behaving functions.  
+make them available by a specific identifier, the function name. In purely functional languages, a function is a mathematical
+funtion: The output of a function is fully determined by its input, i.\,e. a function is free of side-effects. 
 
-So the question is, how to express side effects (state changes like IO) with the use of deterministic functions. This dilemma can be solved
+So the question is, how to express side effects (state changes like IO) with the use of side-effect free functions. This dilemma can be solved
 by making the state changes deterministic, which is done via a \emph{world parameter}. A function that takes such a world parameter than
 is able to react on the world's state, can apply changes and could deliver it in the return value. With this trick it is possible to express
 IO-, random or any side effecting function in a functional language. This world parameter could also be used to gain the control flow back,
@@ -221,13 +221,11 @@ there are also differences that need to be handled. Every approach that models h
 functional functions are extreme powerful. Functional concepts like higher-order functions, curried functions, etc\. doesn't map to silicon at
 all. 
 
-
 We conclude that Haskell functions correlate to logic gates on the one hand and offer some incompatible features on the other hand. To
 describe hardware components with functional languages, only a very specific subset of the features of a Haskell function can be mapped to
 circuit design. Every functional solution tackles theses differences by some means or other. This gives rise to such a manifold solution
 space as described in section~\ref{recent_approaches}. The approaches cope this problem via monads, avoidance of functional features or via
 meta programming techniques. 
-
 
 As monads give the developer a handle to control the execution flow of functional programs, arrows offer a handle not only to the control
 flow of functional functions, but to many more features of functions. In example, it is possible to specify the execution order but it is
@@ -543,9 +541,9 @@ data StructGraph
          , sources :: Pins }   
 \end{haskell}
 
-\subsection{Problems with this approach}
+\subsection{Drawbacks}
 
-This approach comes with various problems. 
+This approach basically comes with two problems. 
 
 As the CRC example shows up, all the input data to these hardware components must fit into simple tuples. This is easy to handle if the
 components only come with one or two pins and certainly which is the case for simple logic gates. But at the latest if the modeled
@@ -577,20 +575,27 @@ arrow, that can be transformed into Netlists later.
 
 % TODO Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
 
-The type for e.g. \hs{(***)} is not natural for hardware design. The type of the data going into a circuit is always the same as
-the type of the values going out of a circuit. 
+Both the type of an arrow \hs{a b c} itself and the type of the arrows combinators do not perfectly natural for hardware design.
+The type \hs{a b c} is too general for a logic gate: type of the data going into a logic gate should always be the same as
+the type of the values going out of this logic gate. Secondly, a set of wires actually is not a tuple and, for instance, the tuple
+\hs{(a,(b,(c,d)))} represents the same set of wires as the tuple \hs{(a,((b,c),d))} and the number of possible (different with
+respect to syntax and type) representations of a set of wires exponentially explodes with a growing number wires we are trying to
+model. 
+
+\section{Arrows on Vectors}
 
 
-\section{Coping with the Tupel-Problem -- "`Vector-Arrows"'}
 
 \begin{haskell}
-class VArrow a where
-  arr    :: (Nat n, Nat m) => (Vec n b -> Vec m b) -> a (Vec n b) (Vec m b)
-  (>>V)  :: a (Vec n b) -> 
-  firsts :: 
-  (&&&V)  :: 
-  (***V)  :: 
+class VArrow (~~>) where
+  arr     :: ((Vec n b)->(Vec m b)) -> (Vec n b)~~>(Vec m b)
+  firsts  :: (Vec n b)~~>(Vec m b) -> (Vec (n:+k) b)~~>(Vec (m:+k) b)
+  seconds :: (Vec n b)~~>(Vec m b) -> (Vec (k:+n) b)~~>(Vec (k:+m) b)
+  (>>|) :: (Vec n b)~~>(Vec m b) -> (Vec m b)~~>(Vec k b) -> (Vec n b)~~>(Vec k b)
+  (**|) :: (Vec n b)~~>(Vec m b) -> (Vec k b)~~>(Vec j b) -> (Vec (n:+k) b)~~>(Vec (m:+j) b)
+  (&&|) :: (Vec n b)~~>(Vec m b) -> (Vec n b)~~>(Vec k b) -> (Vec n b)~~>(Vec (m:+k) b)
 \end{haskell}
+
 
 \subsection{Horn-Clause-Solution}
 
