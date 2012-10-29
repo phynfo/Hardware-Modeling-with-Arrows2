@@ -700,7 +700,7 @@ The obvious solution is to replace the product\footnote{the tuple} in the arrow 
 static in their data type and are dynamic in their value count. To outline the idea the following pseudo code example sketches a vector
 arrow type class in a Haskell syntax.
 \begin{haskell}
-class VArrow (~~>) where
+class VArrow (a) ~~>) where
   arr     :: ((Vec n b)->(Vec m b)) -> a (Vec n b) (Vec m b)
   firsts  :: a (Vec n b) (Vec m b) -> a (Vec (n:+k) b) (Vec (m:+k) b)
   seconds :: a (Vec n b) (Vec m b) -> a (Vec (k:+n) b) (Vec (k:+m) b)
@@ -738,4 +738,4 @@ used later to synthesis VHDL.  \subsection{Show-Type-Class (or Typeable)}
 
 \bibliographystyle{plain}
 \bibliography{Bibliography}
-\end{document}
+ \end{document}
