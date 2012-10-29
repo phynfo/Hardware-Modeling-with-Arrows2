@@ -56,11 +56,12 @@
     basicstyle=\ttfamily\small\setstretch{1},
     commentstyle=\color{ggray}\slshape,
     upquote=true,
+    escapechar={@},
     emph={True,False}, emphstyle=\color{green},
     literate=*{...}{{\textcolor{ggray}{...}}}{3}%
              {\{}{{\textcolor{blue}{\{}}}{1}%
              {\}}{{\textcolor{blue}{\}}}}{1}%
-             {->}{{$\rightarrow$ }}{2},
+             {->}{{$\rightarrow$}}{4},
     stringstyle=\color{red}, showstringspaces=false,
     keywordstyle=\color{blue},#1
 }}{}
@@ -675,48 +676,53 @@ component.
 \par
 As stated earlier, hardware components come most of the time with $>2$ in- output pins. Also the signal types that are transported via the
 interconnections between hardware is pretty limited. Most of the time there are only boolean values transmitted. Integer values are
-transmitted by bundling multiple boolean ones. Sensor developers tend to digitize pretty early in their design. \cite{MakinwaSmatSensors}
+transmitted by bundling multiple boolean ones. Sensor developers tend to digitize pretty early in their design. \cite{MakinwaSmartSensor}
 
-Both the type of an arrow \hs{a b c} itself and the type of the arrows combinators do not perfectly natural for hardware design.
-The type \hs{a b c} is too general for a logic gate: type of the data going into a logic gate should always be the same as
-the type of the values going out of this logic gate. Secondly, a set of wires actually is not a tuple and, for instance, the tuple
-\hs{(a,(b,(c,d)))} represents the same set of wires as the tuple \hs{(a,((b,c),d))} and the number of possible (different with
-respect to syntax and type) representations of a set of wires exponentially explodes with a growing number wires we are trying to
-model. 
-
-\section{Arrows on Vectors}
+Both the type of an arrow \hs{a b c} itself and the type of the arrows combinators do not match natural for hardware design. The type 
+\hs{a b c} is too general for a logic gate: type of the data going into a logic gate should always be the same as the type of the values
+going out of this logic gate. Secondly, a set of wires actually is not a tuple and, for instance, the tuple \hs{(a,(b,(c,d)))} represents
+the same set of wires as the tuple \hs{(a,((b,c),d))} and the number of possible (different with respect to syntax and type) representations
+of a set of wires exponentially explodes with a growing number wires we are trying to model.
 
 \par
-These properties describe hardware as something, that is static in their type of values that are exchanged and is also dynamic in their
-amount of values that are exchanged. Arrows on the other hand are dynamic in the type of values that could be exchanged but are static in
-their amount of single in- outputs. 
-
-\par
-The question is, can one describe a different kind of arrows, that match hardware at that point more naturally, without loosing the other
+These properties describe hardware to be static in their type of values and dynamic in their amount of values. Arrows are dynamic in the
+type of values but are static in their amount of their values. So arrows are exactly opposing the hardwares nature. The question is, can
+arrows be transformed to different kind of arrows? And in such a way that they match hardware at more naturally, without loosing the other
 beneficial properties for hardware design. 
 
 \par
-The obvious solution is to replace the product\footnote{the tuple} in the arrow structure with a vector. Vectors are - like hardware -
-static in their data type and are dynamic in their value count. To outline the idea the following pseudo code example sketches a vector
-arrow type class in a Haskell syntax.
-\begin{haskell}
-class VArrow (a) ~~>) where
-  arr     :: ((Vec n b)->(Vec m b)) -> a (Vec n b) (Vec m b)
-  firsts  :: a (Vec n b) (Vec m b) -> a (Vec (n:+k) b) (Vec (m:+k) b)
-  seconds :: a (Vec n b) (Vec m b) -> a (Vec (k:+n) b) (Vec (k:+m) b)
-  (>>|)   :: a (Vec n b) (Vec m b) -> a (Vec m b) (Vec k b) -> a (Vec n b)      (Vec k b)
-  (**|)   :: a (Vec n b) (Vec m b) -> a (Vec k b) (Vec j b) -> a (Vec (n:+k) b) (Vec (m:+j) b)
-  (&&|)   :: a (Vec n b) (Vec m b) -> a (Vec n b) (Vec k b) -> a (Vec n b)      (Vec (m:+k) b)
-\end{haskell}
-
-
-\subsection{Vector-Arrows are not Arrows}
-
+The obvious solution is to replace the tuple in the arrow structure with a vector. Vectors offer the same behavior as hardware in that they
+are static in their data type and dynamic in their value amount. We like to sketch some ways to express such ``Vector-Arrows'' in Haskell
+and therefore present \emph{Horn-Clauses}, \emph{Type-Families} and \emph{Dependently Typed Arrows}.
 
 
 \subsection{Horn-Clause-Solution}
 
+
+\begin{itemize}
+  \item Type Level Natural numbers
+  \item Type Families for Type Level Natural number calculations
+  \item Compiler Hints?
+  \item Problem with :+:
+\end{itemize}
+
+
 \subsection{Type-Family-Solutions}
+\begin{haskell}
+class VArrow a where
+  arr     :: ((@$Vec_n^{b}$@)-> (@$Vec_m^{b}$@)) -> a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@)
+  firsts  :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
+  seconds:: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(k:+n)}^{b}$@) (@$Vec_{(k:+m)}^{b}$@)
+  (>>|)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_m^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@)
+  (&&|)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
+  (**|)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_k^{b}$@) (@$Vec_j^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+j)}^{b}$@)
+\end{haskell}
+
+\subsection{Dependently-Typed-Solution}
+
+\subsection{Vector-Arrows are not Arrows}
+
+
 
 -  :+: and :-:
 - \ldots
@@ -738,4 +744,4 @@ used later to synthesis VHDL.  \subsection{Show-Type-Class (or Typeable)}
 
 \bibliographystyle{plain}
 \bibliography{Bibliography}
- \end{document}
+\end{document}
