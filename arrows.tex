@@ -544,200 +544,95 @@ arrow, that can be transformed into Netlists later. That is, because there is a 
 and their hardware representation (e.g.\ number of in- output pins).
 
 \subsection{Grid-Arrow}
-To keep track of the defined hardware a datatype is needed. That datatype is called \hs{Grid}.
+Alongside with the arrow execution, the hardware is generated and stored inside a graph like data structure called a \hs{Grid}.
 \begin{haskell}
   newtype Grid a b c = GR (a b c, CircuitDescriptor)
 \end{haskell} 
-The \hs{Grid} type is a combination of the executable arrow and the hardware component part. The arrow resides in the first part of the
-tuple, while the hardware graph occupies the second part. A Grid can be imagined as the surface where you combine different hardware
-elements with each other. In a way this is analog to the snap circuit toys from childhood. The \hs{Grid} is not only the surface to combine
-hardware components, it also is recursive so that it could be used as hardware component itself. So \hs{Grid} is an arrow on its own. 
+The \hs{Grid} type is a combination of the executable arrow and the descriptive hardware component part. Therefore the two are stored inside
+a tuple, where the arrow resides in the first split of the tuple and the hardware graph occupies the second part. A Grid is analog to the
+snap circuit toys from childhood. It is a kind of grid surface where hardware elements can easily be combined with each other to compose new
+structures and analyze their properties. A \hs{Grid} is not only the surface to combine hardware components, but it also is recursive. So
+it could be used as hardware component itself which means a \hs{Grid} is an arrow on its own. 
 
 \subsection{Circuit-Descriptor}
-A \hs{CircuitDescriptor} is the datatype that describes a hardware component in such a way, that a Netlist could be generated out of it. The
-circuit descriptor 
+The descriptive part of the \hs{Grid} is the second part of the tuple that comes with the type of a \hs{CircuitDescriptor}. A
+\hs{CircuitDescriptor}, like the name suggests, describes a circuit in detail. The combination sequence of the hardware parts, their pin
+layouts, their cabling structure and also recursively all subcomponents are represented inside a \hs{CircuitDescriptor}.  A circuit with
+such a descriptor is detailed enough to be expressed as a Netlist. 
 
-%\par
-%Der \hsSource{NodeDescriptor} taucht in der Definition eines Schaltkreises, aber auch in der Definition eines Registers, auf.
-%
-%\begin{code}
-%  data CircuitDescriptor
-%    = MkCombinatorial
-%      { nodeDesc :: NodeDescriptor
-%      , nodes    :: [CircuitDescriptor]
-%      , edges    :: [Edge]
-%      , cycles   :: Tick
-%      , space    :: Area
-%      }
-%
-%    | MkRegister
-%      { nodeDesc :: NodeDescriptor
-%      , bit      :: Int
-%      }
-%
-%    | MkLoop
-%      { nodeDesc :: NodeDescriptor
-%      , nodes    :: [CircuitDescriptor]
-%      , edges    :: [Edge]
-%      , cycles   :: Tick
-%      , space    :: Area
-%      }
-%
-%--  | MkComposite
-%
-%    | NoDescriptor
-%    deriving (Eq)
-%
-%  type Netlist = CircuitDescriptor
-%\end{code}
-%
-%In Haskell lassen sich die Komponenten Attribute über einen Summentyp abgebildet. Dieser Datentyp ist ein fundamentaler Datentyp, da er
-%gleichberechtigt neben der eigentlichen Funktionalität steht. Er besitzt einen Bezeichner \hsSource{label}, sowie eine eindeutige ID
-%\hsSource{nodeId}. Zusätzlicher sind die Ein- sowie die Ausgehenden Pins aufgeführt und auch die verbindenden Kanten (\hsSource{edges}).
-%
-%\par 
-%Jede Komponente kann durch untergeordnete Komponenten beschrieben werden. Dies wird im Datentyp über die \hsSource{nodes} Liste abgebildet.
-%Ist die Komponenten atomar, so enthält dieses Datum die leere Liste. Der Konstruktor \hsSource{NoSG} ist analog zu $\varnothing$. %%% TODO : Mathematisch erklären warum {} benötigt wird
-%
-%\par
-%Um zu verhindern, dass ungültige Schaltungsbeschreibungen erzeugt werden, können \begriff{smart constructor}s eingesetzt werden. Hierbei
-%handelt es sich um Funktionen, die analog zu den Konstruktoren arbeiten. Diese unterscheiden sich darin, dass die Konstruktoren jedes Datum
-%erzeugen. Allerdings ist es häufig nicht gewünscht, jedes Datum erzeugen zu können oder es ist gewünscht, dass der Benutzer beim Versuch ein
-%falsches Datum zu erzeugen, mit einer Fehlermeldung konfrontiert wird. 
-%
-%Jede Hardware Komponente besitzt Pins verschiedener Art, darunter ein- und ausgehende. Diese sind durchnummeriert und werden über ihre
-%Nummer, die als Integer abgebildet wird, identifiziert. Für die Komponenten ID gilt dies ebenfalls.
-%Daneben wird der Typ für einen \begriff{Clock-Cycle} definiert. In diesem Fall wird ein Integer dafür verwendet. Auch die Fläche wird mit
-%einem Integer beschrieben. Für die Fläche besagt der Wert, wieviele \begriff{Zellen} der Baustein belegt. %%% TODO : Was ist eine Zelle?
-%\begin{code}
-%  type PinID = Int
-%  type Pins  = [PinID]
-%
-%  type ID     = Int
-%  type CompID = ID
-%
-%  type Tick   = Int
-%  type Area   = Int
-%\end{code}
-%
-%\par
-%Eine Kante ist eine Verbindung zwischen zwei \hsSource{Pins}, dabei müssen die beiden \hsSource{Pins} nicht unbedingt zu unterschiedlichen
-%Komponenten gehören \footnote{Beispielsweise bei zyklischen Schaltungen}. Das Tupel aus \hsSource{PinID} und \hsSource{CompID} identifiziert
-%einen Pin. Da auch Kanten abgebildet werden sollen, die nach außerhalb der aktuellen Komponente gehen sollen, ist es notwendig, die
-%\hsSource{CompID} als \hsSource{Maybe} Typ zu beschreiben. Das Tupel wird im folgenden mit \hsSource{Anchor} bezeichnet.
-%\begin{code}
-%  type Anchor       = (Maybe CompID, PinID)
-%  type SinkAnchor   = Anchor
-%  type SourceAnchor = Anchor
-%\end{code}
-%
-%Außerdem wurden noch zwei weitere Aliasse vergeben, die Eingehende (\hsSource{SinkAnchor}) und Ausgehende (\hsSource{SourceAnchor}) Pins
-%voneinander unterscheiden.
-%
-%\subsection{Benannte Typen}
-%Um die Graph-Struktur später in Sourcecode überführen zu können, benötigt man Namen für \hsSource{Anchor} und \hsSource{Edges} sowie
-%Lookup-Tabellen, in denen dann die Namen abgelegt werden. Die Typaliasse hierfür werden hier direkt definiert.
-%\begin{code}
-%  type NamedPins = [(String, Anchor)]
-%  type NamedSigs = [(String, Edge)]
-%  type NamedSnks = NamedPins
-%  type NamedSrcs = NamedPins
-%  type NamedIOs  = (NamedSnks, NamedSrcs)
-%
-%  nameSig = "i"
-%  nameExI = "inc"
-%  nameExO = "out"
-%  nameInI = "e"
-%  nameInO = "a"
-%\end{code}
-%
-%
-%\subsection{Schaltungsbeschreibung}
-%Jede Komponente die durch einen Arrow repräsentiert wird, hat zusätzliche Attribute, die nicht in dem Arrow selber stehen. Diese Attribute
-%werden auch nicht für alle Arrow-Klassen Instanzen benötigt. Daher sind diese lose an den Arrow gekoppelt. \footnote{Arrow und Attribute
-%werden in einem Tupel zusammengefasst}
-%
-%%%% TODO : is Circuit the right name? Component is better or: Chip / Device / Module / what ever
-%%%% TODO : MkSG und NoSG sind die falschen Konstruktoren
-%
-%
-%
-%\subsection{Pins}
-%Zunächst werden grundlegende Typaliasse vergeben, die im gesamten Quelltext Anwendung finden. 
-%
-%\par
-%Jede Hardware Komponente besitzt Pins verschiedener Art, darunter Eingabe- und Ausgabepins.
-%
-%\subsection{Schaltungsbeschreibung}
-%Jede Komponente die durch einen Arrow repräsentiert wird, hat zusätzliche Attribute, die nicht in dem Arrow selber stehen. Diese Attribute
-%werden auch nicht für alle Arrow-Klassen Instanzen benötigt. Daher sind diese lose an den Arrow gekoppelt. \footnote{Arrow und Attribute
-%werden in einem Tupel zusammengefasst}
-%
-%\par
-%Hier wird unterschieden zwischen Kombinatorischen Schaltungen \hsSource{MkCombinatorial}, Registern \hsSource{MkRegister} und nicht
-%vorhandenen Schaltungen \hsSource{NoDescriptor}. %%% TODO : Wie fließt hier MkComposite rein?
-%
-%\par
-%Ein Register unterscheidet sich von einer kombinatorischen Schaltung, teilweise gibt es Gemeinsamkeiten. Diese Gemeinsamkeiten werden über
-%den Datentyp \hsSource{NodeDescriptor} verkörpert.
-%
-%
-%\begin{code}
-%  data NodeDescriptor
-%    = MkNode
-%      { label   :: String 
-%      , nodeId  :: ID
-%      , sinks   :: Pins
-%      , sources :: Pins
-%      }
-%    deriving (Eq)
-%\end{code} 
-%
-%
-%\par
-%Es folgt der Quellcode des \begriff{smart constructor}s für ein Register. Hierbei ist nur darauf zu achten, dass dieses Register keine ID
-%bekommt, die schon einmal vergeben wurde.
-%
-%%%% TODO : error checking muss hier noch rein
-%
-%\begin{code}
-%  mkRegister :: NodeDescriptor -> CircuitDescriptor
-%  mkRegister nd 
-%    = MkRegister  
-%      { nodeDesc = nd { label = "REG" ++ (show $ nodeId nd) } 
-%      , bit      = length $ sinks nd
-%      }
-%\end{code} 
-%
-%
-%\subsection{Kanten}
-%Zuletzt fehlt jetzt lediglich die Definition einer Kante. Eine Kante kennt einen Quell-Pin sowie einen Ziel-Pin.
-%\begin{code}
-%  data Edge
-%    = MkEdge { sourceInfo :: SourceAnchor
-%             , sinkInfo   :: SinkAnchor
-%             }
-%    deriving (Eq)
-%\end{code}
-%
-%
-%\subsection{Smarte Konstruktoren}
-%In Haskell lassen sich Typen sehr fein granular definieren. Für die Liste der Pins einer Schaltung passt eine Liste von Integer-Werten sehr
-%gut aber nicht perfekt. So gibt es auch Integer-Listen mit keinem Inhalt. Wollte man das auf der Typebene verhindern, so würde dies einen
-%Overhead erfordern, der nicht im Verhältnis zu dem Nutzen stehen würde. Eine einfache aber nützliche Alternative sind \begriff{smart
-%constructor}. Hierbei handelt es sich um einen Funktion, die als Parameter alle Werte bekommt, die benötigt werden, um ein Datum des
-%gewünschten Types zu erzeugen. Die Funktion erzeugt dann ein solches Datum und kann sich daneben auch noch um Fehler-Behandlungen kümmern.
-%%%% TODO : Boxed Types reference
-%
-%\par
-%Bei \hsSource{mkPins} handelt es sich um so einen \begriff{smart Constructor}. Dieser erhält die Anzahl der benötigten Pins als Parameter
-%und erzeugt dann eine entsprechende Liste. 
-%
-%\begin{code}
-%  mkPins :: Int -> Pins
-%  mkPins 0 = error $ show "It is not possible to generate a component with 0 pins"
-%  mkPins n = [0..n-1]
-%\end{code}
+\par
+The actual data type is divided into three\footnote{actually four, because the empty descriptor requires an own one} unique descriptors:
+\begin{itemize}
+  \item \emph{Combinatorial:} are the parts of a circuit that are describable without a clock or buffered data. For example boolean logic
+    gates fall into this category. 
+  \item \emph{Register:} A register is used to describe the storage of data on the one hand and is used to clock computations on the other
+    hand. The way a register is realized depends on the target platform and there is no need to now it in detail at this point. 
+  \item \emph{Loop:} Those Hardware components that are referring them self are handled via the looping section.
+\end{itemize}
+
+\begin{haskell}
+  data CircuitDescriptor
+    = MkCombinatorial
+      { nodeDesc :: NodeDescriptor
+      , nodes    :: [CircuitDescriptor]
+      , edges    :: [Edge]
+      , cycles   :: Tick
+      , space    :: Area
+      }
+    | MkRegister
+      { nodeDesc :: NodeDescriptor
+      , bit      :: Int
+      }
+    | MkLoop
+      { nodeDesc :: NodeDescriptor
+      , nodes    :: [CircuitDescriptor]
+      , edges    :: [Edge]
+      , cycles   :: Tick
+      , space    :: Area
+      }
+    | NoDescriptor
+    deriving (Eq)
+  type Netlist = CircuitDescriptor
+\end{haskell} 
+
+The \hs{MkCombinatorial} and the \hs{MkLoop} parts show the classic functional graph structure where there are two lists. One containing the
+edges (\hs{edges :: [Edge]}) and another one with the nodes (\hs{nodes :: [CircuitDescriptor]}).  Additionally there are information that
+are the same for every circuit and they are stored inside the (\hs{nodeDesc :: NodeDescriptor}) with the graph. 
+\begin{haskell}
+  data NodeDescriptor
+    = MkNode
+      { label   :: String 
+      , nodeId  :: ID
+      , sinks   :: Pins
+      , sources :: Pins
+      }
+    deriving (Eq)
+\end{haskell} 
+Additionally some informations about the graphs performance (like space- and time consumption) are stored alongside. 
+
+\par 
+Each node itself is a \hs{CircuitDescriptor} and contains a list of \hs{CircuitDescriptor}s, so each node could be described recursively,
+which suits hardware very well.
+
+\par 
+This data structure contains the typical functional way to describe graphs - two lists - but does not enforce to actually build a graph. It
+is a common method to supply \hs{smart constructor}s along with the data type. These constructors are functions that take all the elements
+the actual \hs{CircuitDescriptor} needs. Than they check the inputs and only generate an output if the inputs fulfill given constraints. In
+that way only valid hardware components can be generated. 
+
+\par
+A wire is a connection between two \hs{Pins} of one or two hardware components. A wire connects an output pin - called the source - of one
+component to the input pin - called the sink - of anther component. For looping hardware it is possible that the two components are the
+same. 
+\begin{haskell}
+  type Anchor       = (Maybe CompID, PinID)
+  type SinkAnchor   = Anchor
+  type SourceAnchor = Anchor
+\end{haskell}
+
+The \hs{Maybe CompID} of the \hs{Anchor}s definition is due to the in- and output pins of the whole circuit. Most of the hardware components
+come with inputs and outputs, which are the pins that the hardware brick come with. These global in- and outputs must be modeled in one way
+or the other. Here they have no component id, but only a pin id where they come from or go to. 
 
 
 \section{Coping with the Tupel-Problem - ``Vector-Arrows''}
