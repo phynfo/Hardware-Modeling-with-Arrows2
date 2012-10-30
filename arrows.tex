@@ -265,6 +265,7 @@ type class is called \hs{Arrow}.
 class Arrow a b c where 
   arr   :: (b -> c) -> a b c
   (>>>)  :: a b c    -> a c d   -> a b d
+  first :: a b c    -> a (b, d) (c, d) 
   (***) :: a b c    -> a b' c' -> a (b, b') (c, c')
   (&&&) :: a b c    -> a b  c' -> a  b      (c, c')
 \end{haskell}
@@ -567,13 +568,114 @@ crc_polynom_ccit
      returnA     -< (b4', (b3', (b2', b1')))
 \end{haskell} 
 
+\par
+But there is also a problem with the notation that comes from the auto generated arrow code. Patterson's notation makes a lot use of the
+\hs{arr} function of an arrow. But because it is possible to ``lift'' any function that is passed to \hs{arr} into an arrow, it is
+impossible to keep track of the types of that functions. Nevertheless the type of the passed function is needed to generate a \hs{Grid}
+arrow, that can be transformed into Netlists later. That is, because there is a direct correspondence between the data type of a function
+and their hardware representation (e.g.\ number of in- output pins).
 
-But there is also a problem with that notation which comes from the auto generated arrow code. Patterson's notation makes a lot use of the
-\hs{arr} function of an arrow. But because it is possible to ``lift'' any function passed to \hs{arr} into an arrow, it is impossible to
-keep track of the types of that functions. Nevertheless at least the type of the passed function is needed to generate a nice \hs{Grid}
-arrow, that can be transformed into Netlists later. 
+\subsection{Grid-Arrow}
+Alongside with the arrow execution, the hardware is generated and stored inside a graph like data structure called a \hs{Grid}.
+\begin{haskell}
+  newtype Grid a b c = GR (a b c, CircuitDescriptor)
+\end{haskell} 
+The \hs{Grid} type is a combination of the executable arrow and the descriptive hardware component part. Therefore the two are stored inside
+a tuple, where the arrow resides in the first split of the tuple and the hardware graph occupies the second part. A Grid is analog to the
+snap circuit toys from childhood. It is a kind of grid surface where hardware elements can easily be combined with each other to compose new
+structures and analyze their properties. A \hs{Grid} is not only the surface to combine hardware components, but it also is recursive. So
+it could be used as hardware component itself which means a \hs{Grid} is an arrow on its own. 
 
-% TODO Type for \hs{arr}-Argument (e.g. \hs{\x y z -> (.\ \.\ \.\ )}) is not available for later calculations (to generate the netlists, usw.)
+\subsection{Circuit-Descriptor}
+The descriptive part of the \hs{Grid} is the second part of the tuple that comes with the type of a \hs{CircuitDescriptor}. A
+\hs{CircuitDescriptor}, like the name suggests, describes a circuit in detail. The combination sequence of the hardware parts, their pin
+layouts, their cabling structure and also recursively all subcomponents are represented inside a \hs{CircuitDescriptor}.  A circuit with
+such a descriptor is detailed enough to be expressed as a Netlist. 
+
+\par
+The actual data type is divided into three\footnote{actually four, because the empty descriptor requires an own one} unique descriptors:
+\begin{itemize}
+  \item \emph{Combinatorial:} are the parts of a circuit that are describable without a clock or buffered data. For example boolean logic
+    gates fall into this category. 
+  \item \emph{Register:} A register is used to describe the storage of data on the one hand and is used to clock computations on the other
+    hand. The way a register is realized depends on the target platform and there is no need to now it in detail at this point. 
+  \item \emph{Loop:} Those Hardware components that are referring them self are handled via the looping section.
+\end{itemize}
+
+\begin{haskell}
+  data CircuitDescriptor
+    = MkCombinatorial
+      { nodeDesc :: NodeDescriptor
+      , nodes    :: [CircuitDescriptor]
+      , edges    :: [Edge]
+      , cycles   :: Tick
+      , space    :: Area
+      }
+    | MkRegister
+      { nodeDesc :: NodeDescriptor
+      , bit      :: Int
+      }
+    | MkLoop
+      { nodeDesc :: NodeDescriptor
+      , nodes    :: [CircuitDescriptor]
+      , edges    :: [Edge]
+      , cycles   :: Tick
+      , space    :: Area
+      }
+    | NoDescriptor
+    deriving (Eq)
+  type Netlist = CircuitDescriptor
+\end{haskell} 
+
+The \hs{MkCombinatorial} and the \hs{MkLoop} parts show the classic functional graph structure where there are two lists. One containing the
+edges (\hs{edges :: [Edge]}) and another one with the nodes (\hs{nodes :: [CircuitDescriptor]}).  Additionally there are information that
+are the same for every circuit and they are stored inside the (\hs{nodeDesc :: NodeDescriptor}) with the graph. 
+\begin{haskell}
+  data NodeDescriptor
+    = MkNode
+      { label   :: String 
+      , nodeId  :: ID
+      , sinks   :: Pins
+      , sources :: Pins
+      }
+    deriving (Eq)
+\end{haskell} 
+Additionally some informations about the graphs performance (like space- and time consumption) are stored alongside. 
+
+\par 
+Each node itself is a \hs{CircuitDescriptor} and contains a list of \hs{CircuitDescriptor}s, so each node could be described recursively,
+which suits hardware very well.
+
+\par 
+This data structure contains the typical functional way to describe graphs - two lists - but does not enforce to actually build a graph. It
+is a common method to supply \hs{smart constructor}s along with the data type. These constructors are functions that take all the elements
+the actual \hs{CircuitDescriptor} needs. Than they check the inputs and only generate an output if the inputs fulfill given constraints. In
+that way only valid hardware components can be generated. 
+
+\par
+A wire is a connection between two \hs{Pins} of one or two hardware components. A wire connects an output pin - called the source - of one
+component to the input pin - called the sink - of anther component. For looping hardware it is possible that the two components are the
+same. 
+\begin{haskell}
+  type Anchor       = (Maybe CompID, PinID)
+  type SinkAnchor   = Anchor
+  type SourceAnchor = Anchor
+\end{haskell}
+
+The \hs{Maybe CompID} of the \hs{Anchor}s definition is due to the in- and output pins of the whole circuit. Most of the hardware components
+come with inputs and outputs, which are the pins that the hardware brick come with. These global in- and outputs must be modeled in one way
+or the other. Here they have no component id, but only a pin id where they come from or go to. 
+
+
+\section{Coping with the Tupel-Problem - ``Vector-Arrows''}
+So classical arrows are an adequate abstract form to describe hardware, they are modular and the come with a enhanced type system that
+helps to reduce errors. The problem with them is the way the model hardware on a crucial point, namely the in- and output paths to each
+component. 
+
+\par
+As stated earlier, hardware components come most of the time with $>2$ in- output pins. Also the signal types that are transported via the
+interconnections between hardware is pretty limited. Most of the time there are only boolean values transmitted. Integer values are
+transmitted by bundling multiple boolean ones. Sensor developers tend to digitize pretty early in their design. \cite{MakinwaSmatSensors}
 
 Both the type of an arrow \hs{a b c} itself and the type of the arrows combinators do not perfectly natural for hardware design.
 The type \hs{a b c} is too general for a logic gate: type of the data going into a logic gate should always be the same as
@@ -584,17 +686,32 @@ model.
 
 \section{Arrows on Vectors}
 
+\par
+These properties describe hardware as something, that is static in their type of values that are exchanged and is also dynamic in their
+amount of values that are exchanged. Arrows on the other hand are dynamic in the type of values that could be exchanged but are static in
+their amount of single in- outputs. 
 
+\par
+The question is, can one describe a different kind of arrows, that match hardware at that point more naturally, without loosing the other
+beneficial properties for hardware design. 
 
+\par
+The obvious solution is to replace the product\footnote{the tuple} in the arrow structure with a vector. Vectors are - like hardware -
+static in their data type and are dynamic in their value count. To outline the idea the following pseudo code example sketches a vector
+arrow type class in a Haskell syntax.
 \begin{haskell}
 class VArrow (~~>) where
-  arr     :: ((Vec n b)->(Vec m b)) -> (Vec n b)~~>(Vec m b)
-  firsts  :: (Vec n b)~~>(Vec m b) -> (Vec (n:+k) b)~~>(Vec (m:+k) b)
-  seconds :: (Vec n b)~~>(Vec m b) -> (Vec (k:+n) b)~~>(Vec (k:+m) b)
-  (>>|) :: (Vec n b)~~>(Vec m b) -> (Vec m b)~~>(Vec k b) -> (Vec n b)~~>(Vec k b)
-  (**|) :: (Vec n b)~~>(Vec m b) -> (Vec k b)~~>(Vec j b) -> (Vec (n:+k) b)~~>(Vec (m:+j) b)
-  (&&|) :: (Vec n b)~~>(Vec m b) -> (Vec n b)~~>(Vec k b) -> (Vec n b)~~>(Vec (m:+k) b)
+  arr     :: ((Vec n b)->(Vec m b)) -> a (Vec n b) (Vec m b)
+  firsts  :: a (Vec n b) (Vec m b) -> a (Vec (n:+k) b) (Vec (m:+k) b)
+  seconds :: a (Vec n b) (Vec m b) -> a (Vec (k:+n) b) (Vec (k:+m) b)
+  (>>|)   :: a (Vec n b) (Vec m b) -> a (Vec m b) (Vec k b) -> a (Vec n b)      (Vec k b)
+  (**|)   :: a (Vec n b) (Vec m b) -> a (Vec k b) (Vec j b) -> a (Vec (n:+k) b) (Vec (m:+j) b)
+  (&&|)   :: a (Vec n b) (Vec m b) -> a (Vec n b) (Vec k b) -> a (Vec n b)      (Vec (m:+k) b)
 \end{haskell}
+
+
+\subsection{Vector-Arrows are not Arrows}
+
 
 
 \subsection{Horn-Clause-Solution}
@@ -614,9 +731,7 @@ in all it seems that the Vec-Type together with the Arrows-Instances is too much
 \subsection{ForSyDe: Using the AST of the arr argument}
 
 In order to transform a usual Haskell function into an hardware block, ForSyDe stores the AST of that function which is
-used later to synthesis VHDL.
-
-\subsection{Show-Type-Class (or Typeable)}
+used later to synthesis VHDL.  \subsection{Show-Type-Class (or Typeable)}
 
 \subsection{Generalized Arrows -- avoiding arr}
 
