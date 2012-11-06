@@ -73,6 +73,7 @@
     basicstyle=\ttfamily\setstretch{1},
     commentstyle=\color{ggray}\slshape,
     upquote=true,
+    escapechar={@},
     emph={True,False}, emphstyle=\color{green},
     literate=*{...}{{\textcolor{ggray}{...}}}{3}%
              {\{}{{\textcolor{blue}{\{}}}{1}%
@@ -159,22 +160,25 @@ implementations \cite{cryptol:fpga}. Cryptol has lately been adopted by an Ameri
 % functional community. We the show why to use arrows model hardware. 
 
 
+
+
 \section{First Approach: Classical Arrows}
-Within this section, we present a basic cycle redundancy check implementation with the design method of arrows. The example shows a typical
-way to express hardware with the functional method and also the flexibility of a functional approach is demonstrated. This is done by
-implementing multiple CRC's with differing polynomials. How to generate netlists out of the functional data structure is shown later on.
-After that, the problems with classical arrows are highlighted and solutions are discussed.
+Within this section we present a cycle redundancy check algorithm, implemented with the design method of arrows. The example shows a typical
+way to express hardware functional. Also the flexibility of a functional approach is demonstrated via the implementation of multiple CRC's.
+How to generate netlists out of the functional data structure is shown later on. After that, the problems with classical arrows are
+highlighted and solutions are discussed.
 
 
-\subsection{Implementation}
-The calculation of a specific CRC to some input data is based upon a mathematical method called a polynomial division. The reminder of that
-devision is the CRC Checksum. The original data padded by the CRC results in 0 if that devision is done again. 
+\subsection{CRC - Implementation}
+The calculation of a specific CRC to some input data is based upon a method called a polynomial division. The reminder of that devision is
+the CRC checksum. The input data added with the CRC checksum, results in $0$ if this is devided by the polynomial.
 
-
-First of all there are operators, that are essential to work with this classical arrows, because of their tuple like inner structure. This
-means, that each circuit is processing only a few inputs to output. The inputs therefore need to be reordered previous to each function
-call. One function, that is responsible for this tupel'ing process is \hs{mvRight}. This function takes an argument of the structure
-\((x,(y,z))\) to a different structure \((y,(x,z))\). 
+First of all there are operators that are essential to work with this classical arrows. This is because of their tuple like inner structure.
+That means, each circuit processes only a few inputs into outputs. The inputs need to be structured in a way, that the function is only
+called with the correct inputs. In example, component $c_0$ produces the outputs $s_0, s_1, s_2, s_3$. Another component $c_1$ processes
+$s_0$ and $s_2$; $c_2$ acts on $s_1$ and $s_3$. The process of restructuring the output of one function into an input to another function is
+called tuple'ing. A function that does such tuple'ing is \hs{mvRight}. This takes an argument of the structure \((x,(y,z))\) to a different
+structure \((y,(x,z))\). 
 
 \begin{haskell}
 mvRight :: (Arrow a) => Grid a (my, (b, rst)) (b, (my, rst))
@@ -496,62 +500,145 @@ or the other. Here they have no component id, but only a pin id where they come 
 
 \section{Coping with the Tupel-Problem - ``Vector-Arrows''}
 So classical arrows are an adequate abstract form to describe hardware, they are modular and the come with a enhanced type system that
-helps to reduce errors. The problem with them is the way the model hardware on a crucial point, namely the in- and output paths to each
-component. 
+helps to reduce errors. The part which does not match the hardware perfect is the way the in- and output pins are structured, the tuples. 
 
 \par
-As stated earlier, hardware components come most of the time with $>2$ in- output pins. Also the signal types that are transported via the
-interconnections between hardware is pretty limited. Most of the time there are only boolean values transmitted. Integer values are
-transmitted by bundling multiple boolean ones. Sensor developers tend to digitize pretty early in their design. \cite{MakinwaSmartSensor}
+As stated earlier, it is somewhat theoretical to work with hardware that come with $\leq2$ in- or output pins. Tuples prefer $2$ in- or
+output kind of hardware. Also tuples allow anything to be an in- or output. In the digital world, there is only hardware that transmits
+boolean values. Integers are transmitted by bundling multiple boolean values. Also the developers of Sensors try to digitize pretty early in
+their design process. \cite{MakinwaSmartSensor} 
 
-Both the type of an arrow \hs{a b c} itself and the type of the arrows combinators do not match natural for hardware design. The type 
-\hs{a b c} is too general for a logic gate: type of the data going into a logic gate should always be the same as the type of the values
-going out of this logic gate. Secondly, a set of wires actually is not a tuple and, for instance, the tuple \hs{(a,(b,(c,d)))} represents
-the same set of wires as the tuple \hs{(a,((b,c),d))} and the number of possible (different with respect to syntax and type) representations
-of a set of wires exponentially explodes with a growing number wires we are trying to model.
+\par
+The type \hs{a b c} is too general for a logic gate: the type of the data going into a logic gate should always be the same as the type of
+the values coming out of this logic gate. Secondly, a set of wires actually is not a tuple and, for instance, the tuple \hs{(a,(b,(c,d)))}
+represents the same set of wires as the tuple \hs{(a,((b,c),d))} and the number of possible (different with respect to syntax and type)
+representations of a set of wires exponentially explodes with a growing number wires we are trying to model.
 
 \par
 These properties describe hardware to be static in their type of values and dynamic in their amount of values. Arrows are dynamic in the
-type of values but are static in their amount of their values. So arrows are exactly opposing the hardwares nature. The question is, can
-arrows be transformed to different kind of arrows? And in such a way that they match hardware at more naturally, without loosing the other
-beneficial properties for hardware design. 
+type of values but are static in their amount of the values. So arrows are exactly opposing the hardwares nature. The question is, can
+arrows be transformed into a different kind of arrows? And is this possible in such a way that they match hardware more naturally, without
+loosing the other beneficial properties for hardware design.
 
 \par
-The obvious solution is to replace the tuple in the arrow structure with a vector. Vectors offer the same behavior as hardware in that they
-are static in their data type and dynamic in their value amount. We like to sketch some ways to express such ``Vector-Arrows'' in Haskell
-and therefore present \emph{Horn-Clauses}, \emph{Type-Families} and \emph{Dependently Typed Arrows}.
-
+It is obvious that a vector fulfills exactly the desired hardware behavior. A vector $Vec_n^b$ is a vector of $n$ values of type $b$. So
+vectors are static in their data type ($b$) and are dynamic in their value amount ($n$). In the following we sketch some ways to express
+these ``Vector-Arrows'' in Haskell and therefore we present a \emph{Horn-Clauses} like approach, an approach with \emph{Type-Families} and
+one with \emph{Dependently Typed Arrows}. 
 
 \subsection{Horn-like-clause Solution}
-A list can hold an endless amount of elements, so a list matches the hardware with a bunch of wires much better than a tuple. Yet still
-there is a problem, a list can always hold more elements than the component hold wires. Therefore it is necessary to bring the count of
-wires into the datatype. In a first step there are natural numbers needed inside the data type. With type level natural numbers it is
-possible to express how many values a list should hold, respective how many wires a given hardware component holds. 
+A first approach would be to define a list-like data type that is limited in length. Therefore it is necessary to bring a counter, namely
+the wire count, into the datatype. Type level natural numbers are the tool to restrict the own list like data type in length. One ends up
+with a length limited list, namely a vector. 
 % TODO, cite richtig platzieren
 \cite{kiselyov:strong_collections}
 
+\begin{haskell}
+data Vec n a where
+  T    :: Vec 'VZero a -- (@$Vec_0^a$@)
+  (:.) :: a -> Vec n a -> Vec ('VSucc n) a -- (@$a \rightarrow Vec_n^a \rightarrow Vec_{n+1}^a$@)
+\end{haskell} 
+
 \par
-With the next step, the list needs to be restricted to only the exact number of arguments that the type level natural number advises. 
+The type level natural numbers are introduced as peano numbers. Peano numbers are expressed trough a starting number, that is usually zero
+($VZero$) and a successor function ($VSucc$ $n$) which represents the $n+1$ value. Because Haskell allows the definition of recursive data
+types, it is possible to bring natural numbers into a data type. A similar mechanism was showed in 2004 by Kiselyov et al
+\cite{kiselyov:strong_collections}. 
 
+\par
+The arrow class defines the functions \hs{arr}, \hs{first}, \hs{second}, \hs{(***)} and \hs{(&&&)}. \hs{first} translates an arrow into
+another one, that takes it's input from the front element of a tuple. \hs{second} does the same thing, but with the second element of that
+tuple. So these two functions are uniquely based upon the tuple. With vector arrows there are no tuples, and therefore there is no way to
+differentiate a first value from a second one. 
 
-\begin{itemize}
-  \item Type Level Natural numbers
-  \item Type Families for Type Level Natural number calculations
-  \item Compiler Hints?
-  \item Problem with :+:
-\end{itemize}
+\par 
+Lets focus the first and second theme for a moment. What these two functions do is, they split the input data and only show the firsts or the
+tail to the submitted arrow. This is analogue to the projection maps of a cartesian product ($\pi : A \times B \rightarrow A$, $\rho : A
+\times B \rightarrow B$). So the \hs{first}-arrow only gets the first piece, the \hs{second}-arrow gets the second one. There aren't such
+projection maps or similar functionality for vectors. So at this point it's clear that vector arrows can't be real arrows. This finding and
+its aftermath is issued in Section~\ref{notRealArrows} in detail. Nevertheless, it is possible to split a vector into two parts, a first
+part and a second one. 
 
-
-\subsection{Type-Family Solutions}
+\par
+So here is a class definition for a vector arrow. 
 \begin{haskell}
 class VArrow a where
   arr     :: ((@$Vec_n^{b}$@)-> (@$Vec_m^{b}$@)) -> a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@)
   firsts  :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
-  seconds:: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(k:+n)}^{b}$@) (@$Vec_{(k:+m)}^{b}$@)
-  (>>|)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_m^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@)
-  (&&|)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
-  (**|)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_k^{b}$@) (@$Vec_j^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+j)}^{b}$@)
+  seconds :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(k:+n)}^{b}$@) (@$Vec_{(k:+m)}^{b}$@)
+  (>^>)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_m^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@)
+  (&^&)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
+  (*^*)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_k^{b}$@) (@$Vec_j^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+j)}^{b}$@)
 \end{haskell}
+
+\hs{arr} takes a Haskell function into an arrow that expects a vector of $n$ $b$'s ($Vec_n^b$) into a new vector of $b$'s of length $m$
+($Vec_m^b$). The sequential concatenation of arrows is done by the \hs{(>^>)} operator. Because vectors can hold more values than two, and
+it's likely that these two parts are larger than one, the \hs{first} and \hs{second} function names are appended with a "`s"'. This gives
+raise to the two arrow operators \hs{firsts} and \hs{seconds}. 
+
+
+\begin{haskell}
+  class (Category a) => VArrow a where
+    arr    :: (VNat n)  
+           => (Vec n b -> Vec n b) -> a (Vec n b) (Vec n b)
+
+
+    init   :: ( VNat n, VNat m
+              , VAdd n m nm
+              , VEq (VSucc n) nm VTrue
+              )   
+           => a (Vec n b) (Vec m b) -> (Vec nm b) (Vec nm b) -> a (Vec n b) (Vec n b)
+
+    tail   :: ( VNat n, VNat m
+              , VAdd n m nm
+              , VEq nm (VSucc m) VTrue
+              )   
+           => a (Vec nm b) (Vec nm b) -> a (Vec m b) (Vec m b)
+
+    tail'  :: ( VNat m ) 
+           => a (Vec (VSucc m) b) (Vec (VSucc m) b) -> a (Vec m b) (Vec m b)
+
+    head   :: ( VNat n, VNat m
+              , VAdd n m nm
+              , VEq nm (VSucc m) VTrue
+              )   
+           => a (Vec nm b) (Vec nm b) -> a (Vec n b) (Vec n b)
+
+    last   :: ( VNat n, VNat m
+              , VAdd n m nm
+              , VEq (VSucc n) nm VTrue
+              )   
+           => a (Vec nm b) (Vec nm b) -> a (Vec m b) (Vec m b)
+
+
+    (***)  :: (VNat n, VNat m, VAdd n m nm) 
+           => a (Vec n b) (Vec n b) -> a (Vec m b) (Vec m b) -> a (Vec nm b) (Vec nm b)
+
+    (&&&)  :: (VNat n, VAdd n n nn) 
+           => a (Vec n b) (Vec n b) -> a (Vec n b) (Vec n b) -> a (Vec n b) (Vec nn b)
+\end{haskell}
+
+
+
+
+
+\begin{itemize}
+  \item what is needed to define an arrow with them? 
+        \begin{itemize}
+          \item arrow is comes with arr, first, second, \dots 
+          \item minimal instance definition of an arrow
+          \item first \& second have other meaning now
+        \end{itemize}
+
+  \item Type Families for Type Level Natural number calculations
+  \item Compiler Hints?
+  \item Problem with :+:
+
+  \item Arrows are not Real Arrows -> problem? 
+\end{itemize}
+
+
+\subsection{Type-Family Solutions}
 
 \subsection{Dependently-Typed Solution}
 
