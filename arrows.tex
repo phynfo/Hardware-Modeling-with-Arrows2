@@ -526,6 +526,18 @@ vectors are static in their data type ($b$) and are dynamic in their value amoun
 these ``Vector-Arrows'' in Haskell and therefore we present a \emph{Horn-Clauses} like approach, an approach with \emph{Type-Families} and
 one with \emph{Dependently Typed Arrows}. 
 
+\par
+So here is a class definition for a vector arrow. 
+\begin{haskell}
+class VArrow a where
+  arr     :: ((@$Vec_n^{b}$@)-> (@$Vec_m^{b}$@)) -> a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@)
+  firsts  :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
+  seconds :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(k:+n)}^{b}$@) (@$Vec_{(k:+m)}^{b}$@)
+  (>^>)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_m^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@)
+  (&^&)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
+  (*^*)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_k^{b}$@) (@$Vec_j^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+j)}^{b}$@)
+\end{haskell}
+
 \subsection{Horn-like-clause Solution}
 A first approach would be to define a list-like data type that is limited in length. Therefore it is necessary to bring a counter, namely
 the wire count, into the datatype. Type level natural numbers are the tool to restrict the own list like data type in length. One ends up
@@ -546,36 +558,23 @@ types, it is possible to bring natural numbers into a data type. A similar mecha
 \cite{kiselyov:strong_collections}. 
 
 \par
-The arrow class defines the functions \hs{arr}, \hs{first}, \hs{second}, \hs{(***)} and \hs{(&&&)}. \hs{first} translates an arrow into
-another one, that takes it's input from the front element of a tuple. \hs{second} does the same thing, but with the second element of that
-tuple. So these two functions are uniquely based upon the tuple. With vector arrows there are no tuples, and therefore there is no way to
-differentiate a first value from a second one. 
+The arrow class defines the functions \hs{arr}, \hs{first}, \hs{second}, \hs{(***)} and \hs{(&&&)}. \hs{arr} takes a Haskell function into
+an arrow that expects a vector of $n$ $b$'s ($Vec_n^b$) into a new vector of $b$'s of length $m$ ($Vec_m^b$). The sequential concatenation
+of arrows is done by the \hs{(>^>)} operator.\hs{first} translates an arrow into another one, that takes it's input from the front element
+of a tuple. \hs{second} does the same thing, but with the second element of that tuple. So these two functions are uniquely based upon the
+tuple. With vector arrows there are no tuples, and therefore there is no way to differentiate a first value from a second one. 
 
 \par 
-Lets focus the first and second theme for a moment. What these two functions do is, they split the input data and only show the firsts or the
-tail to the submitted arrow. This is analogue to the projection maps of a cartesian product ($\pi : A \times B \rightarrow A$, $\rho : A
-\times B \rightarrow B$). So the \hs{first}-arrow only gets the first piece, the \hs{second}-arrow gets the second one. There aren't such
-projection maps or similar functionality for vectors. So at this point it's clear that vector arrows can't be real arrows. This finding and
-its aftermath is issued in Section~\ref{notRealArrows} in detail. Nevertheless, it is possible to split a vector into two parts, a first
-part and a second one. 
+What these two functions do is, they split the input data and only show the firsts or the tail to the submitted arrow. This is analogue to
+the projection maps of a cartesian product ($\pi : A \times B \rightarrow A$, $\rho : A \times B \rightarrow B$). So the \hs{first}-arrow
+only gets the first piece, the \hs{second}-arrow gets the second one. There aren't such projection maps or similar functionality for
+vectors. So at this point it's clear that vector arrows can't be real arrows. This finding and its aftermath is issued in
+Section~\ref{notRealArrows} in detail. Nevertheless, it is possible to split a vector into two parts, namely the first element and the rest
+of the list. Also this can be done from the back end, so that the list is split into a list except for the last element and the last
+element. This leaves us with an \hs{init} and a \hs{last} function. The backwards version would be a \hs{head} and a \hs{tail} function.
 
 \par
-So here is a class definition for a vector arrow. 
-\begin{haskell}
-class VArrow a where
-  arr     :: ((@$Vec_n^{b}$@)-> (@$Vec_m^{b}$@)) -> a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@)
-  firsts  :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
-  seconds :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_{(k:+n)}^{b}$@) (@$Vec_{(k:+m)}^{b}$@)
-  (>^>)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_m^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@)
-  (&^&)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_k^{b}$@) -> a (@$Vec_n^{b}$@) (@$Vec_{(m:+k)}^{b}$@)
-  (*^*)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_k^{b}$@) (@$Vec_j^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+j)}^{b}$@)
-\end{haskell}
-
-\hs{arr} takes a Haskell function into an arrow that expects a vector of $n$ $b$'s ($Vec_n^b$) into a new vector of $b$'s of length $m$
-($Vec_m^b$). The sequential concatenation of arrows is done by the \hs{(>^>)} operator. Because vectors can hold more values than two, and
-it's likely that these two parts are larger than one, the \hs{first} and \hs{second} function names are appended with a "`s"'. This gives
-raise to the two arrow operators \hs{firsts} and \hs{seconds}. 
-
+Given that constraint a proper definition of the arrow type class would be like the following:
 
 \begin{haskell}
   class (Category a) => VArrow a where
@@ -617,6 +616,20 @@ raise to the two arrow operators \hs{firsts} and \hs{seconds}.
     (&&&)  :: (VNat n, VAdd n n nn) 
            => a (Vec n b) (Vec n b) -> a (Vec n b) (Vec n b) -> a (Vec n b) (Vec nn b)
 \end{haskell}
+
+\par
+If one tries to instantiate that arrow class there are more than one issue with this approach. 
+
+
+\begin{itemize}
+  \item (***) laesst sich nicht durch first a >>> second b erzeugen
+  \item compiler will mehr infos (horn clauses)
+  \item contexte werden unübersichtlich groß (kompiler sollte dies übernehmen)
+\end{itemize}
+
+\par
+Because vectors can hold more values than two, and it's likely that these two parts are larger than one, the \hs{first} and \hs{second}
+function names are appended with a "`s"'. This gives raise to the two arrow operators \hs{firsts} and \hs{seconds}. 
 
 
 
