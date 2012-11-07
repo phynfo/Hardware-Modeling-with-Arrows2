@@ -642,17 +642,12 @@ The $2+k$ is the length of the whole input vector and the output is a vector of 
 sugared. That means it is not possible to write just $2+k$ but instead one has to write \hs{VAdd (VSucc (VSucc VZero)) k nk}. This might be
 tedious for easy arrows and becomes an error source for larger arrows. 
 
-
-The instantiation of this class gets really messy. This 
-
-\begin{itemize}
-  \item (***) laesst sich nicht durch first a >>> second b erzeugen
-  \item compiler will mehr infos (horn clauses)
-  \item contexte werden unübersichtlich groß (kompiler sollte dies übernehmen)
-\end{itemize}
+\par 
+Another problem with this approach is the compiler. It is not possible for GHC to deduce harder arithmetics in the type context and also is
+valid for simpler ones. There are way's to supply GHC with additional information that help to deduce more complicated expressions
 
 \par
-Because vectors can hold more values than two, and it's likely that these two parts are larger than one, the \hs{first} and \hs{second}
+Because vectorS can hold more values than two, and it's likely that these two parts are larger than one, the \hs{first} and \hs{second}
 function names are appended with a "`s"'. This gives raise to the two arrow operators \hs{firsts} and \hs{seconds}. 
 
 
