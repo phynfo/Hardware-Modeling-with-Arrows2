@@ -538,13 +538,13 @@ class VArrow a where
   (*^*)   :: a (@$Vec_n^{b}$@) (@$Vec_m^{b}$@) -> a (@$Vec_k^{b}$@) (@$Vec_j^{b}$@) -> a (@$Vec_{(n:+k)}^{b}$@) (@$Vec_{(m:+j)}^{b}$@)
 \end{haskell}
 
+
 \subsection{Horn-like-clause Solution}
 A first approach would be to define a list-like data type that is limited in length. Therefore it is necessary to bring a counter, namely
 the wire count, into the datatype. Type level natural numbers are the tool to restrict the own list like data type in length. One ends up
 with a length limited list, namely a vector. 
 % TODO, cite richtig platzieren
 \cite{kiselyov:strong_collections}
-
 \begin{haskell}
 data Vec n a where
   T    :: Vec 'VZero a -- (@$Vec_0^a$@)
@@ -574,7 +574,12 @@ of the list. Also this can be done from the back end, so that the list is split 
 element. This leaves us with an \hs{init} and a \hs{last} function. The backwards version would be a \hs{head} and a \hs{tail} function.
 
 \par
-Given that constraint a proper definition of the arrow type class would be like the following:
+In any way, Haskell is 
+
+Horn Clauses definitions in the data type
+
+\par
+Combined together an arrow class for vector arrows could look like the following:
 
 \begin{haskell}
   class (Category a) => VArrow a where
@@ -618,8 +623,29 @@ Given that constraint a proper definition of the arrow type class would be like 
 \end{haskell}
 
 \par
-If one tries to instantiate that arrow class there are more than one issue with this approach. 
+The classical arrow class definition comes with some default definitions. One of them, \hs{a *** b = first a >>> second b}, defines the
+\hs{(***)}-operator with the help of \hs{first} and \hs{second}. The class definition above doesn't allow such usage. This is due to the
+changed nature of \hs{first} and \hs{second} which have become \hs{init}, \hs{tail}, \hs{head} and \hs{last}. The problem lies within the
+plurality of possibilities to split a list into halves in contrast to the singular possibility to divide a tuple. 
 
+\par
+It is possible to divide the list in just the right spot, once an arrow is known. \hs{first f} needs to split the input vector into one that
+has exact the length \hs{f} expects as input, and a rest vector. So with \hs{aXor} being an arrow that takes two Booleans to one,
+\hs{first} applied to it is an arrow from at least two Booleans to at least one.
+\begin{haskell}
+  --      a (Vec 2 Bool) (Vec 1 Bool)
+  aXor :: a (Vec (VSucc (VSucc VZero)) Bool) (Vec (VSucc VZero) Bool)
+
+  --              a (Vec 2+k Bool) (Vec 1+k Bool)
+  first (aXor) :: (VNat k, VAdd (VSucc (VSucc VZero)) k nk, VAdd (VSucc VZero) k mk)
+               => a (Vec ((VSucc (VSucc VZero)) + k) Bool) (Vec ((VSucc VZero) + k) Bool
+\end{haskell} 
+The $2+k$ is the length of the whole input vector and the output is a vector of length $1+k$. A drawback is, that the actual syntax isn't
+sugared. That means it is not possible to write just $2+k$ but instead one has to write \hs{VAdd (VSucc (VSucc VZero)) k nk}. This might be
+tedious for easy arrows and becomes an error source for larger arrows. 
+
+
+The instantiation of this class gets really messy. This 
 
 \begin{itemize}
   \item (***) laesst sich nicht durch first a >>> second b erzeugen
