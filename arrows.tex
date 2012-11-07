@@ -574,12 +574,10 @@ of the list. Also this can be done from the back end, so that the list is split 
 element. This leaves us with an \hs{init} and a \hs{last} function. The backwards version would be a \hs{head} and a \hs{tail} function.
 
 \par
-In any way, Haskell is 
-
-Horn Clauses definitions in the data type
-
-\par
-Combined together an arrow class for vector arrows could look like the following:
+In any way, Haskell is a static typed language which means, everything in the datatype is declared. Therefore all the variables that hold
+type level natural numbers are defined in the data type context. Also if the type level integers are added together, the used type class
+\hs{VAdd} is listed in the types context. Working with such contexts reminds of the Prolog Horn Clauses and therefore are responsible for
+this approach. Combining everything together, an arrow class for vector arrows could look like the following:
 
 \begin{haskell}
   class (Category a) => VArrow a where
