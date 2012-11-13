@@ -119,15 +119,15 @@ used to generate the Netlist. They are also used to simulate behavior or proof p
 overview of the \hs{Grid}-Arrow which is able to do exactly that. 
 
 \subsection{Grid-Arrow}
-Alongside with the arrow execution, the generated Netlist is stored inside a graph like data structure called a \hs{CircuitDescriptor}.
+The \hs{Grid}-Arrow is a combination of the executable arrow and the descriptive hardware component part. Because none of them supersedes
+the other, they are stored inside a tuple. The function arrow resides in the first, the graph occupies the second part of the tuple. 
 \begin{haskell}
   newtype Grid a b c = GR (a b c, CircuitDescriptor)
 \end{haskell} 
-The \hs{Grid}-Arrow is a combination of the executable arrow and the descriptive hardware component part. Because none of them supersedes
-the other, they are stored inside a tuple. The arrow resides in the first part of the tuple, the graph occupies the second one. A Grid is
-the analog to the snap circuit toys from childhood. It is a grid surface where hardware elements can be combined with each other to compose
-new structures and analyze them. A \hs{Grid} is not only the surface to combine hardware components, but it also is a recursive surface. So
-it could be used as hardware component itself which means a \hs{Grid} is an arrow on its own. 
+Alongside with the arrow execution, the generated Netlist is stored inside the graph like data structure called a \hs{CircuitDescriptor}.
+A Grid is the analog to the snap circuit toys from childhood. It is a grid surface where hardware elements can be combined with each other
+to compose new structures and analyze them. A \hs{Grid} is not only the surface to combine hardware components, but it also is a recursive
+surface. So it could be used as hardware component itself which means a \hs{Grid} is an arrow on its own. 
 
 
 \subsection{Circuit-Descriptor}
@@ -609,23 +609,60 @@ has exact the length \hs{f} expects as input, and a rest vector. So with \hs{aXo
                => a (Vec ((VSucc (VSucc VZero)) + k) Bool) (Vec ((VSucc VZero) + k) Bool
 \end{haskell} 
 The $2+k$ is the length of the whole input vector and the output is a vector of length $1+k$. A drawback is, that the actual syntax isn't
-sugared. That means it is not possible to write just $2+k$ but instead one has to write \hs{VAdd (VSucc (VSucc VZero)) k nk}. This might be
-tedious for easy arrows and becomes an error source for larger arrows. 
-
-\par 
-Another problem with this approach is the compiler. It is not possible for GHC to deduce harder arithmetics in the type context and also is
-valid for simpler ones. There are way's to supply GHC with additional information that help to deduce more complicated expressions.
+sugared. That means it is not possible to write just $2+k$ but instead one has to write \hs{VAdd (VSucc (VSucc VZero)) k nk} as a data type
+context. This might be tedious for easy arrows and becomes an error source for larger arrows. 
 
 
 \subsection{Type-Family Solutions}
-Another approach is to replace the Horn like clauses by actual calculations. 
+Another approach is to replace the Horn like clauses by actual calculations. Haskells type family extension comes in handy for this task. 
 
-\begin{itemize}
-  \item what is a type family
-  \item type family for addition
-  \item arrow class with type families
-  \item :+: problem with type families
-\end{itemize}
+\par
+A type family is a way to actually calculate the type constructor of a data type. The horn-clause solution lacks exactly this feature. The
+length of the vector is stored in the peano number of that vector. As a peano number is just a bunch of type constructors, type families
+could be used to calculate the needed constructor amount. The Haskell-Wiki describes this vividly: A type family is to a data type, what the
+method of a type class is to a function. 
+
+\par
+As the earlier solution showed, the addition is an operator that is needed in the type definition of the arrow methods. So we illustrate the
+functionality of a type family by defining an addition operator.
+\begin{haskell}
+type family (n::VNat)   :+ (m::VNat) :: VNat
+type instance VZero     :+ m     = m 
+type instance VSucc n   :+ m     = VSucc (n :+ m)
+\end{haskell}
+The first thing to do is to define the type family by itself. The type family operator \hs{:+} operates on \hs{VNat}s. Both of the input
+values ($n$ and $m$) are added and result in another \hs{VNat} number. The two lines following define the addition function recursively.
+Adding zero to something is just something; adding one from something to another thing is just the successor of something added by another
+thing. 
+
+\par
+With the addition type family the arrow class could be defined much more similar to the original type class. 
+\begin{haskell}
+class Category a => VArrow a where
+  arr     :: (Vec n b -> Vec m b)
+          -> a (Vec n b)         (Vec m b)
+
+  firsts  :: a (Vec n b)         (Vec m b)
+          -> a (Vec (n :+ k) b)  (Vec (m :+ k) b)
+
+  seconds :: ((m :+ k) ~ (k :+ m))
+          => a (Vec n b)         (Vec m b)
+          -> a (Vec (k :+ n) b)  (Vec (k :+ m) b)
+
+  (***)   :: a (Vec n  b)        (Vec m  b)
+          -> a (Vec n' b)        (Vec m' b)
+          -> a (Vec (n :+ n') b) (Vec (m :+ m') b)
+
+  (&&&)   :: a (Vec n b)         (Vec m  b)
+          -> a (Vec n b)         (Vec m' b)
+          -> a (Vec n b)         (Vec (m :+ m') b)
+\end{haskell}
+
+\par 
+A problem with this approach is the compiler. It is not possible for GHC to deduce arithmetics in the type context and this is also valid
+for simpler ones. In fact GHC is unable to deduce the equality of $n+m = m+n$. There are way's to supply the compiler with that information,
+so GHC has not to deduce this on its own. But this are only hints into specific directions. Again this is a point where it is tedious to
+supply GHC with hints for easy deductions but gets impossible for more complicated arithmetics.
 
 
 \subsection{Dependently-Typed Solution}
